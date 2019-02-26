@@ -11,6 +11,15 @@ pub enum Receiver {
     Agent_c_(Rc<Agent_c>), // send only
 }
 
+impl Receiver {
+    fn unwrap<T> (&self) -> T {
+        match self {
+            Agent_a_(Rc(agnt)) => agnt,
+            Agent_c_(Rc<agnt>) => agnt,
+        }
+    }
+}
+
 pub enum Signal {
     Signal_1_,
     Signal_2_,

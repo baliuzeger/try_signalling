@@ -51,10 +51,10 @@ impl Agent {
 
     fn make_event(&self) {
         for cn in self.out_channels_1 {
-            cn.receiver.process_1(self.generate_1());
+            self.event_1(cn.receiver.unwrap());
         };
         for cn in self.out_channels_2 {
-            cn.receiver.process_2(self.generate_2());
+            self.event_2(cn.receiver.unwrap());
         };
     }
     
@@ -66,6 +66,14 @@ impl Agent {
         self.gn2.generate()
     }
 
+    fn event_1<T: Process_1> (&self, rcvr: T, s: Signal_1) {        
+        rcvr.process_1()
+    }
+
+    fn event_2<T: Process_2> (&self, rcvr: T, s: Signal_2) {
+        rcvr.process_2()
+    }
+    
     fn add_in_channel(&self, ch: &Channel) {
         match ch.signal_sample {
             Signal::Signal_1_ => {
