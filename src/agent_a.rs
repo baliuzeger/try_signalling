@@ -14,6 +14,7 @@ struct Agent_a<T, U, V_i, V_o> {
 }
 
 impl<T, U, V_i, V_o> Agent_a<T, U, V_i, V_o> {
+    
     pub fn new() -> Agent_a<T, U, V_i, V_o> {
         Agent_a {
             name: String::from("Agent a!"),
@@ -40,7 +41,9 @@ impl<T, U, V_i, V_o> Agent_a<T, U, V_i, V_o> {
         }
     }
 
-    fn generate(&self, _s: Signal_1) -> Signal_1 {
+    
+    
+    fn generate_s1(&self, _s: Signal_1) -> Signal_1 {
         self.gn1.generate()
     }
 
@@ -72,3 +75,25 @@ impl<T, U, V_i, V_o> Agent_a<T, U, V_i, V_o> {
         self.out_channels.push(Rc::clone(&out_ch));
     }
 }
+
+
+
+// connection {
+//     spike_sample: spike_event
+// }
+
+// neuron.generate(spike_event) {
+//     spike_event.generate(&self)
+// }
+
+// neuron_A.generate(connection_a.sample);
+// neuron_A.generate(connection_b.sample);
+
+
+    
+
+// impl spike_event {
+//     fn generate(neron)
+// }
+    
+
