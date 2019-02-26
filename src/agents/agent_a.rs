@@ -3,97 +3,97 @@ use crate::generators::{Generator_1, Generator_2};
 use crate::processors::{Processor_1, Processor_2};
 use crate::signals::{Channel, Signal_1, Signal_2};
 
-struct Agent_a<T, U, V_i, V_o> {
+struct Agent<T, U, V_i, V_o> {
     name: String,
     gn1: Generator_1,
+    out_channels_1: Vec<Rc<Channel>>,
     gn2: Generator_2,
+    out_channels_2: Vec<Rc<Channel>>,
     pc1: Processor_1,
+    in_channels_1: Vec<Rc<Channel>>,
     pc2: Processor_2,
-    in_channels: Vec<Rc<Channel<T, U, V_i>>>,
-    out_channels: Vec<Rc<Channel<T, U, V_o>>>,
+    in_channels_2: Vec<Rc<Channel>>,
 }
 
-impl<T, U, V_i, V_o> Agent_a<T, U, V_i, V_o> {
+impl Agent {
     
-    pub fn new() -> Agent_a<T, U, V_i, V_o> {
+    pub fn new() -> Agent {
         Agent_a {
             name: String::from("Agent a!"),
             gn1: Generator_1::new(),
+            out_channels_1: Vec::new(),
             gn2: Generator_2::new(),
+            out_channels_2: Vec::new(),
             pc1: Processor_1::new(),
+            in_channels_1: Vec::new(),
             pc2: Processor_2::new(),
-            in_channels: Vec::new(),
-            out_channels: Vec::new(),
+            in_channels_2: Vec::new(),
         }
     }
 
-    fn process(&self, s: Signal_1) {
+    pub fn wrap_sender(&self) -> Sender {
+        Sender::Agent_a_(Rc::clone(&self))
+    }
+
+    pub fn wrap_receiver(&self) -> Seceiver {
+        Receiver::Agent_a_(Rc::clone(&self))
+    }
+
+    fn process(&self, )
+    
+    fn process_1(&self, s: Signal_1) {
         self.pc1.process(s);
     }
 
-    fn process(&self, s: Signal_2) {
+    fn process_2(&self, s: Signal_2) {
         self.pc2.process(s);
     }
 
-    fn event(&self) {
-        for cn in self.channels {
-            cn.receiver.process(cn.sender.generate(cn.signal_sample));
-        }
+    fn make_event(&self) {
+        for cn in self.out_channels_1 {
+            self.event_1(cn.receiver.unwrap());
+        };
+        for cn in self.out_channels_2 {
+            self.event_2(cn.receiver.unwrap());
+        };
     }
-
     
-    
-    fn generate_s1(&self, _s: Signal_1) -> Signal_1 {
+    fn generate_1(&self) -> Signal_1 {
         self.gn1.generate()
     }
 
-    fn generate(&self, _s: Signal_2) -> Signal_2 {
+    fn generate_2(&self) -> Signal_2 {
         self.gn2.generate()
     }
 
-    fn check_ref_generate(&self, s: Signal_1) -> Signal_1 {
-        self.gn1.check_sample(s)
+    fn event_1<T: Process_1> (&self, rcvr: T, s: Signal_1) {        
+        rcvr.process_1()
     }
 
-    fn check_ref_generate(&self, s: Signal_2) -> Signal_2 {
-        self.gn2.check_sample(s)
+    fn event_2<T: Process_2> (&self, rcvr: T, s: Signal_2) {
+        rcvr.process_2()
+    }
+    
+    fn add_in_channel(&self, ch: &Channel) {
+        match ch.signal_sample {
+            Signal::Signal_1_ => {
+                self.in_channels_1.push(Rc::clone(&ch));
+            },
+            Signal::Signal_2_ => {
+                self.in_channels_2.push(Rc::clone(&ch));
+            },
+        }
     }
 
-    fn check_ref_process(&self, s: Signal_1) -> Signal_1 {
-        self.pc1.check_sample(s)
+    fn add_out_channel(&self, ch: &Channel) {
+        match ch.signal_sample {
+            Signal::Signal_1_ => {
+                self.out_channels_1.push(Rc::clone(&ch));
+            },
+            Signal::Signal_2_ => {
+                self.out_channels_2.push(Rc::clone(&ch));
+            },
+        }
     }
-
-    fn check_ref_process(&self, s: Signal_2) -> Signal_2 {
-        self.pc2.check_sample(s)
-    }
-
-    fn add_in_channel(&self, in_ch: Rc<Channel<T, U, V_i>>) {
-        self.in_channels.push(Rc::clone(&in_ch));
-    }
-
-    fn add_out_channel(&self, out_ch: Rc<Channel<T, U, V_o>>) {
-        self.out_channels.push(Rc::clone(&out_ch));
-    }
+    
 }
-
-
-
-// connection {
-//     spike_sample: spike_event
-// }
-
-// neuron.generate(spike_event) {
-//     spike_event.generate(&self)
-// }
-
-// neuron_A.generate(connection_a.sample);
-// neuron_A.generate(connection_b.sample);
-
-
-    
-
-// impl spike_event {
-//     fn generate(neron)
-// }
-    
-
