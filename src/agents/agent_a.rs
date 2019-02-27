@@ -1,7 +1,8 @@
 use std::rc::Rc;
 use crate::generators::{Generator_1, Generator_2};
 use crate::processors::{Processor_1, Processor_2};
-use crate::signals::{Sender, Receiver, Signal, Channel, Signal_1, Signal_2};
+// use crate::signals::{Sender, Receiver, Signal, Channel, Signal_1, Signal_2};
+use crate::signals::{Signal, Channel, Signal_1, Signal_2};
 use crate::agents::{Process_1, Process_2};
 
 pub struct Agent {
@@ -43,13 +44,13 @@ impl Agent {
         }
     }
 
-    pub fn wrap_sender(self) -> Sender {
-        Sender::Agent_a_(Rc::new(self))
-    }
+    // pub fn wrap_sender(self) -> Sender {
+    //     Sender::Agent_a_(Rc::new(self))
+    // }
 
-    pub fn wrap_receiver(self) -> Receiver {
-        Receiver::Agent_a_(Rc::new(self))
-    }
+    // pub fn wrap_receiver(self) -> Receiver {
+    //     Receiver::Agent_a_(Rc::new(self))
+    // }
     
     pub fn make_event(&self) {
         for cn in self.out_channels_1 {

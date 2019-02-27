@@ -1,6 +1,6 @@
 use std::rc::Rc;
 use std::ops::Deref;
-use crate::agents::{agent_a};
+use crate::agents::{Is_sender, Is_receiver, agent_a};
 
 pub enum Sender {
     Agent_a_(Rc<agent_a::Agent>), // send & receive
@@ -42,7 +42,7 @@ pub struct Channel {
 }
 
 impl Channel {
-    fn new (sender: &Rc<Sender>, receiver: &Rc<Receiver>, signal_sample: Signal) -> Channel {
+    fn new<S: Is_sender, R: Is_receiver> (sender: &Rc<S>, receiver: &Rc<R>, signal_sample: Signal) -> Channel {
         let ch = Channel {
             sender: Rc::clone(sender.wrap_sender()),
             receiver: Rc::clone(receiver.wrap_receiver()),
