@@ -2,13 +2,13 @@ use std::rc::Rc;
 // use std::ops::Deref;
 use crate::agents::{Is_sender, Is_receiver, agent_a};
 
-pub enum Sender<'a> {
-    Agent_a_(Rc<agent_a::Agent<'a>>), // send & receive
+pub enum Sender {
+    Agent_a_(Rc<agent_a::Agent>), // send & receive
 //    Agent_b_(Rc<Agent_b::Agent>), // send only
 }
 
-pub enum Receiver<'a> {
-    Agent_a_(Rc<agent_a::Agent<'a>>), // send & receive
+pub enum Receiver {
+    Agent_a_(Rc<agent_a::Agent>), // send & receive
 //    Agent_c_(Rc<Agent_c>), // send only
 }
 
@@ -35,22 +35,24 @@ pub enum Signal {
     Signal_2_,
 }
 
-pub struct Channel<'a> {
-    pub sender: Rc<&'a mut Sender<'a>>,
-    pub receiver: Rc<&'a mut Receiver<'a>>,
+pub struct Channel {
+    pub sender: Rc<Sender>,
+    pub receiver: Rc<Receiver>,
     pub signal_sample: Signal,
 }
 
-impl<'a> Channel<'a> {
-    fn new<'b, 'c, 'd: 'b + 'c, S, R> (sender: &'b Rc<S>, receiver: &'c Rc<R>, signal_sample: Signal) -> Channel<'d>
-    where S: Is_sender<'b>,
-          R: Is_receiver<'c>,
+impl Channel {
+    fn new<S, R> (sender: &Rc<S>, receiver: &Rc<R>, signal_sample: Signal) -> Channel
+    where S: Is_sender,
+          R: Is_receiver,
     {
         let ch = Channel {
             sender: Rc::new(sender.wrap_sender()),
             receiver: Rc::new(receiver.wrap_receiver()),
             signal_sample: signal_sample,
         };
+        // receiver.deref().unwrap().add_in_channel(ch);
+        // sender.deref().unwrap().add_out_channel(ch);
         sender.add_out_channel(ch);
         receiver.add_in_channel(ch);
         ch

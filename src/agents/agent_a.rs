@@ -4,37 +4,38 @@ use crate::processors::{Processor_1, Processor_2};
 use crate::signals::{Sender, Receiver, Signal, Channel, Signal_1, Signal_2};
 use crate::agents::{Process_1, Process_2, Is_sender, Is_receiver};
 
-pub struct Agent<'a> {
+pub struct Agent {
     name: String,
     gn1: Generator_1,
-    out_channels_1: Vec<Rc<Channel<'a>>>,
+    out_channels_1: Vec<Rc<Channel>>,
     gn2: Generator_2,
-    out_channels_2: Vec<Rc<Channel<'a>>>,
+    out_channels_2: Vec<Rc<Channel>>,
     pc1: Processor_1,
-    in_channels_1: Vec<Rc<Channel<'a>>>,
+    in_channels_1: Vec<Rc<Channel>>,
     pc2: Processor_2,
-    in_channels_2: Vec<Rc<Channel<'a>>>,
+    in_channels_2: Vec<Rc<Channel>>,
 }
 
-impl<'a> Process_1 for &mut Agent<'a> {
-    fn process_1(&mut self, s: Signal_1) {
+impl Process_1 for Agent {
+    fn process_1(self, s: Signal_1) {
         self.pc1.process(s);
     }
 }
 
-impl<'a> Process_2 for &mut Agent<'a> {
-    fn process_2(&mut self, s: Signal_2) {
+impl Process_2 for Agent {
+    fn process_2(self, s: Signal_2) {
         self.pc2.process(s);
     }    
 }
 
-impl<'a> Is_sender<'a> for Agent<'a> {
-    fn wrap_sender(self) -> Sender<'a> {
+
+
+impl Is_sender for Agent {
+    fn wrap_sender(self) -> Sender {
         Sender::Agent_a_(Rc::new(self))
     }
 
-
-    fn add_out_channel(&mut self, ch: Channel) {
+    fn add_out_channel(&self, ch: Channel) {
         match ch.signal_sample {
             Signal::Signal_1_ => {
                 self.out_channels_1.push(Rc::new(ch));
@@ -46,12 +47,12 @@ impl<'a> Is_sender<'a> for Agent<'a> {
     }
 }
 
-impl<'a> Is_receiver<'a> for Agent<'a> {
-    fn wrap_receiver(self) -> Receiver<'a> {
+impl Is_receiver for Agent {
+    fn wrap_receiver(self) -> Receiver {
         Receiver::Agent_a_(Rc::new(self))
     }
 
-    fn add_in_channel(&mut self, ch: Channel) {
+    fn add_in_channel(&self, ch: Channel) {
         match ch.signal_sample {
             Signal::Signal_1_ => {
                 self.in_channels_1.push(Rc::new(ch));
@@ -63,8 +64,8 @@ impl<'a> Is_receiver<'a> for Agent<'a> {
     }
 }
 
-impl<'a> Agent<'a> {
-    pub fn new() -> Agent<'static> {
+impl Agent {
+    pub fn new() -> Agent {
         Agent {
             name: String::from("Agent a!"),
             gn1: Generator_1::new(),
