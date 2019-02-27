@@ -15,9 +15,9 @@ impl Generator_1 {
         Signal_1 {message: self.name,}
     }
 
-    fn check_sample(s: Signal_1) -> Signal_1 {
-        Signal_1 {message: String::from("ref g1."),}
-    }
+    // fn check_sample(s: Signal_1) -> Signal_1 {
+    //     Signal_1 {message: String::from("ref g1."),}
+    // }
 }
 
 pub struct Generator_2 {
@@ -35,7 +35,7 @@ impl Generator_2 {
         Signal_2 {message: self.name,}
     }
 
-    fn check_sample(s: Signal_2) -> Signal_2 {
-        Signal_2 {message: String::from("ref g2."),}
-    }
+    // fn check_sample(s: Signal_2) -> Signal_2 {
+    //     Signal_2 {message: String::from("ref g2."),}
+    // }
 }
