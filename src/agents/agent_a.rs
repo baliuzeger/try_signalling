@@ -1,9 +1,10 @@
 use std::rc::Rc;
 use crate::generators::{Generator_1, Generator_2};
 use crate::processors::{Processor_1, Processor_2};
-use crate::signals::{Channel, Signal_1, Signal_2};
+use crate::signals::{Sender, Receiver, Signal, Channel, Signal_1, Signal_2};
+use crate::agents::{Process_1, Process_2};
 
-struct Agent<T, U, V_i, V_o> {
+pub struct Agent {
     name: String,
     gn1: Generator_1,
     out_channels_1: Vec<Rc<Channel>>,
@@ -15,10 +16,21 @@ struct Agent<T, U, V_i, V_o> {
     in_channels_2: Vec<Rc<Channel>>,
 }
 
+impl Process_1 for Agent {
+    fn process_1(&self, s: Signal_1) {
+        self.pc1.process(s);
+    }
+}
+
+impl Process_2 for Agent {
+    fn process_2(&self, s: Signal_2) {
+        self.pc2.process(s);
+    }    
+}
+
 impl Agent {
-    
     pub fn new() -> Agent {
-        Agent_a {
+        Agent {
             name: String::from("Agent a!"),
             gn1: Generator_1::new(),
             out_channels_1: Vec::new(),
@@ -31,30 +43,20 @@ impl Agent {
         }
     }
 
-    pub fn wrap_sender(&self) -> Sender {
-        Sender::Agent_a_(Rc::clone(&self))
+    pub fn wrap_sender(self) -> Sender {
+        Sender::Agent_a_(Rc::new(self))
     }
 
-    pub fn wrap_receiver(&self) -> Seceiver {
-        Receiver::Agent_a_(Rc::clone(&self))
+    pub fn wrap_receiver(self) -> Receiver {
+        Receiver::Agent_a_(Rc::new(self))
     }
-
-    fn process(&self, )
     
-    fn process_1(&self, s: Signal_1) {
-        self.pc1.process(s);
-    }
-
-    fn process_2(&self, s: Signal_2) {
-        self.pc2.process(s);
-    }
-
-    fn make_event(&self) {
+    pub fn make_event(&self) {
         for cn in self.out_channels_1 {
-            self.event_1(cn.receiver.unwrap());
+            self.event_1::<Process_1>(cn.receiver.unwrap());
         };
         for cn in self.out_channels_2 {
-            self.event_2(cn.receiver.unwrap());
+            self.event_2::<Process_2>(cn.receiver.unwrap());
         };
     }
     
@@ -66,32 +68,32 @@ impl Agent {
         self.gn2.generate()
     }
 
-    fn event_1<T: Process_1> (&self, rcvr: T, s: Signal_1) {        
-        rcvr.process_1()
+    fn event_1<T: Process_1> (&self, rcvr: T) {        
+        rcvr.process_1(self.generate_1());
     }
 
-    fn event_2<T: Process_2> (&self, rcvr: T, s: Signal_2) {
-        rcvr.process_2()
+    fn event_2<T: Process_2> (&self, rcvr: T) {
+        rcvr.process_2(self.generate_2());
     }
     
-    fn add_in_channel(&self, ch: &Channel) {
+    pub fn add_in_channel(&self, ch: Channel) {
         match ch.signal_sample {
             Signal::Signal_1_ => {
-                self.in_channels_1.push(Rc::clone(&ch));
+                self.in_channels_1.push(Rc::new(ch));
             },
             Signal::Signal_2_ => {
-                self.in_channels_2.push(Rc::clone(&ch));
+                self.in_channels_2.push(Rc::new(ch));
             },
         }
     }
 
-    fn add_out_channel(&self, ch: &Channel) {
+    pub fn add_out_channel(&self, ch: Channel) {
         match ch.signal_sample {
             Signal::Signal_1_ => {
-                self.out_channels_1.push(Rc::clone(&ch));
+                self.out_channels_1.push(Rc::new(ch));
             },
             Signal::Signal_2_ => {
-                self.out_channels_2.push(Rc::clone(&ch));
+                self.out_channels_2.push(Rc::new(ch));
             },
         }
     }

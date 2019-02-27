@@ -5,18 +5,18 @@ pub struct Generator_1 {
 }
 
 impl Generator_1 {
-    fn new() -> Generator_1 {
+    pub fn new() -> Generator_1 {
         Generator_1 {
             name: String::from("g1"),
         }
     }
     
-    fn generate(&self) -> Signal_1 {
-        Signal_1 {name: self.name,}
+    pub fn generate(&self) -> Signal_1 {
+        Signal_1 {message: self.name,}
     }
 
     fn check_sample(s: Signal_1) -> Signal_1 {
-        Signal_1 {name: String::from("ref g1."),}
+        Signal_1 {message: String::from("ref g1."),}
     }
 }
 
@@ -25,17 +25,17 @@ pub struct Generator_2 {
 }
 
 impl Generator_2 {
-    fn new() -> Generator_2 {
+    pub fn new() -> Generator_2 {
         Generator_2 {
             name: String::from("g2"),
         }
     }
 
-    fn generate(&self) -> Signal_2 {
-        Signal_2 {name: self.name,}
+    pub fn generate(&self) -> Signal_2 {
+        Signal_2 {message: self.name,}
     }
 
     fn check_sample(s: Signal_2) -> Signal_2 {
-        Signal_2 {name: String::from("ref g2."),}
+        Signal_2 {message: String::from("ref g2."),}
     }
 }
