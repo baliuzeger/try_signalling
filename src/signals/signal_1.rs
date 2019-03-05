@@ -17,12 +17,13 @@ pub trait Process_1 {
     // fn add_in_1<T> (&self, ch: &T);
     // fn add_in_1<T> (&self, ch: &'static T) where T: Propagate_1,;
     // fn add_in_1 (&self, ch: Rc<dyn Propagate_1>);
-    fn add_in_1<C:'static + Propagate_1> (&self, ch: Rc<C>);
+    fn add_in_1<C:'static + Propagate_1> (&mut self, ch: Rc<C>);
 }
 
 pub trait Generate_1 {
     fn generate_1 (&self) -> Signal_1;
-    fn add_out_1<T: Propagate_1> (&self, ch: &T);
+    // fn add_out_1<T: Propagate_1> (&self, ch: &T);
+    fn add_out_1<C:'static + Propagate_1> (&mut self, ch: Rc<C>);
 }
 
 pub struct Channel_1<S: Generate_1, R: Process_1> {
@@ -43,7 +44,7 @@ impl<S: Generate_1, R: Process_1> Propagate_1 for Channel_1<S, R> {
     }
 }
 
-impl<S: Generate_1, R: Process_1> Channel_1<S, R> {
+impl<S:'static + Generate_1, R:'static + Process_1> Channel_1<S, R> {
     // fn new<C: Propagate_1>(s: Rc<S>, r: Rc<R>) -> Rc<C> {
     //     let ch = Rc::new(Channel_1 {
     //         sender: Rc::downgrade(&s),
@@ -61,7 +62,7 @@ impl<S: Generate_1, R: Process_1> Channel_1<S, R> {
             receiver: Rc::downgrade(&r),
             value: 10,
         });
-        s.add_out_1(Rc::clone(&ch));
+        s.add_out_1(Rc::clone(&ch)); // need RefCell!!
         r.add_in_1(Rc::clone(&ch));
         ch
     }
