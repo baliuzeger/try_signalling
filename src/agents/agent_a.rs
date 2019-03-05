@@ -27,10 +27,18 @@ impl Process_1 for Agent {
     //     self.in_channels_1.push(Rc::new(ch));
     // }
 
-    fn add_in_1<T> (&self, ch:&'static T)
-    where T: Propagate_1,
-    {
-        self.in_channels_1.push(Rc::new(ch));
+    // fn add_in_1<T> (&self, ch:&'static T)
+    // where T: Propagate_1,
+    // {
+    //     self.in_channels_1.push(Rc::new(ch));
+    // }
+
+    // fn add_in_1 (&self, ch: Rc<dyn Propagate_1>) {
+    //     self.in_channels_1.push(ch);
+    // }
+
+    fn add_in_1<C:'static + Propagate_1> (&self, ch: Rc<C>) {
+        self.in_channels_1.push(ch);
     }
 }
 
@@ -42,7 +50,7 @@ impl Generate_1 for Agent {
     }
 
     fn add_out_1<T: Propagate_1> (&self, ch: &T) {
-        self.out_channels_1.push(Rc::new(ch));
+        self.out_channels_1.push(Rc::new(&ch));
     }
 }
 
