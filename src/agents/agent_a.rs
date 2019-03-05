@@ -16,27 +16,6 @@ impl Process_1 for Agent {
         println!("{}", self.proc_value + s.message);
     }
 
-    // fn add_in_1<T> (&self, ch: &T)
-    // {
-    //     self.in_channels_1.push(Rc::new(ch));
-    // }
-
-    // fn add_in_1<'a, T> (&self, ch:&'a T)
-    // where &'a T: Propagate_1,
-    // {
-    //     self.in_channels_1.push(Rc::new(ch));
-    // }
-
-    // fn add_in_1<T> (&self, ch:&'static T)
-    // where T: Propagate_1,
-    // {
-    //     self.in_channels_1.push(Rc::new(ch));
-    // }
-
-    // fn add_in_1 (&self, ch: Rc<dyn Propagate_1>) {
-    //     self.in_channels_1.push(ch);
-    // }
-
     fn add_in_1<C:'static + Propagate_1> (&mut self, ch: Rc<C>) {
         self.in_channels_1.push(ch);
     }
@@ -48,10 +27,6 @@ impl Generate_1 for Agent {
             message: self.gen_value,
         }
     }
-
-    // fn add_out_1<T: Propagate_1> (&self, ch: &T) {
-    //     self.out_channels_1.push(Rc::new(&ch));
-    // }
 
     fn add_out_1<C:'static + Propagate_1> (&mut self, ch: Rc<C>) {
         self.out_channels_1.push(ch);
