@@ -1,34 +1,34 @@
-use crate::signals::signal_1::{Signal_1, Generate_1, Propagate_1, Process_1};
+use crate::signals::signal_1::{Signal1, Generate1, Propagate1, Process1};
 
 use std::rc::Rc;
 
-struct Agent {
+pub struct Agent {
     gen_value: i32,
     proc_value: i32,
-    out_channels_1: Vec<Rc<dyn Propagate_1>>,
+    out_channels_1: Vec<Rc<dyn Propagate1>>,
 //    out_channels_2: Vec<Rc<dyn Propagate_2>>,
-    in_channels_1: Vec<Rc<dyn Propagate_1>>,
+    in_channels_1: Vec<Rc<dyn Propagate1>>,
 //    in_channels_2: Vec<Rc<dyn Propagate_2>>,
 }
 
-impl Process_1 for Agent {
-    fn process_1(&self, s: Signal_1) {
+impl Process1 for Agent {
+    fn process_1(&self, s: Signal1) {
         println!("{}", self.proc_value + s.message);
     }
 
-    fn add_in_1<C:'static + Propagate_1> (&mut self, ch: Rc<C>) {
+    fn add_in_1<C:'static + Propagate1> (&mut self, ch: Rc<C>) {
         self.in_channels_1.push(ch);
     }
 }
 
-impl Generate_1 for Agent {
-    fn generate_1(&self) -> Signal_1 {
-        Signal_1 {
+impl Generate1 for Agent {
+    fn generate_1(&self) -> Signal1 {
+        Signal1 {
             message: self.gen_value,
         }
     }
 
-    fn add_out_1<C:'static + Propagate_1> (&mut self, ch: Rc<C>) {
+    fn add_out_1<C:'static + Propagate1> (&mut self, ch: Rc<C>) {
         self.out_channels_1.push(ch);
     }
 }
@@ -45,7 +45,7 @@ impl Agent {
         }
     }
 
-    fn event(&self) {
+    pub fn event(&self) {
         // let a_sgnl_1 = self.generate_1();
         for cn in self.out_channels_1.iter() {
             cn.propagate(self.generate_1());

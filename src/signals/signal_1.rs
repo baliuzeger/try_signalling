@@ -1,53 +1,53 @@
 // use crate::agents;
 use std::rc::{Rc, Weak};
+use std::cell::RefCell;
 
-
-pub struct Signal_1 {
+pub struct Signal1 {
     pub message: i32,
 }
 
-pub trait Propagate_1 {
-    fn refine(&self, s: Signal_1) -> Signal_1;
-    fn propagate(&self, s: Signal_1);
+pub trait Propagate1 {
+    fn refine(&self, s: Signal1) -> Signal1;
+    fn propagate(&self, s: Signal1);
 }
 
-pub trait Process_1 {
-    fn process_1(&self, s: Signal_1);
-    fn add_in_1<C:'static + Propagate_1> (&mut self, ch: Rc<C>);
+pub trait Process1 {
+    fn process_1(&self, s: Signal1);
+    fn add_in_1<C:'static + Propagate1> (&mut self, ch: Rc<C>);
 }
 
-pub trait Generate_1 {
-    fn generate_1 (&self) -> Signal_1;
-    fn add_out_1<C:'static + Propagate_1> (&mut self, ch: Rc<C>);
+pub trait Generate1 {
+    fn generate_1 (&self) -> Signal1;
+    fn add_out_1<C:'static + Propagate1> (&mut self, ch: Rc<C>);
 }
 
-pub struct Channel_1<S: Generate_1, R: Process_1> {
-    sender: Weak<S>,
-    receiver: Weak<R>,
+pub struct Channel1<S: Generate1, R: Process1> {
+    sender: Weak<RefCell<S>>,
+    receiver: Weak<RefCell<R>>,
     value: i32,
 }
 
-impl<S: Generate_1, R: Process_1> Propagate_1 for Channel_1<S, R> {
-    fn refine(&self, s: Signal_1) -> Signal_1 {
-        Signal_1 {
+impl<S: Generate1, R: Process1> Propagate1 for Channel1<S, R> {
+    fn refine(&self, s: Signal1) -> Signal1 {
+        Signal1 {
             message: self.value + s.message,
         }
     }
     
-    fn propagate(&self, s: Signal_1) {
-        self.receiver.upgrade().unwrap().process_1(self.refine(s));
+    fn propagate(&self, s: Signal1) {
+        self.receiver.upgrade().unwrap().borrow().process_1(self.refine(s));
     }
 }
 
-impl<S:'static + Generate_1, R:'static + Process_1> Channel_1<S, R> {
-    fn new(s: Rc<S>, r: Rc<R>) -> Rc<Channel_1<S, R>> {
-        let ch = Rc::new(Channel_1 {
+impl<S:'static + Generate1, R:'static + Process1> Channel1<S, R> {
+    pub fn new(s: Rc<RefCell<S>>, r: Rc<RefCell<R>>) -> Rc<Channel1<S, R>> {
+        let ch = Rc::new(Channel1 {
             sender: Rc::downgrade(&s),
             receiver: Rc::downgrade(&r),
             value: 10,
         });
-        s.add_out_1(Rc::clone(&ch)); // need RefCell!!
-        r.add_in_1(Rc::clone(&ch));
+        s.borrow_mut().add_out_1(Rc::clone(&ch));
+        r.borrow_mut().add_in_1(Rc::clone(&ch));
         ch
     }
 }
