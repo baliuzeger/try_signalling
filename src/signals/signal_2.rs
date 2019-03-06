@@ -14,12 +14,12 @@ pub trait Propagate2 {
 
 pub trait Process2 {
     fn process_2(&self, s: Signal2);
-    fn add_in_2<C:'static + Propagate2> (&mut self, ch: Rc<C>);
+    fn add_in_2<C:'static + Propagate2> (&mut self, ch: Rc<RefCell<C>>);
 }
 
 pub trait Generate2 {
     fn generate_2 (&self) -> Signal2;
-    fn add_out_2<C:'static + Propagate2> (&mut self, ch: Rc<C>);
+    fn add_out_2<C:'static + Propagate2> (&mut self, ch: Rc<RefCell<C>>);
 }
 
 pub struct Channel2<S: Generate2, R: Process2> {
@@ -41,12 +41,14 @@ impl<S: Generate2, R: Process2> Propagate2 for Channel2<S, R> {
 }
 
 impl<S:'static + Generate2, R:'static + Process2> Channel2<S, R> {
-    pub fn new(s: Rc<RefCell<S>>, r: Rc<RefCell<R>>) -> Rc<Channel2<S, R>> {
-        let ch = Rc::new(Channel2 {
-            sender: Rc::downgrade(&s),
-            receiver: Rc::downgrade(&r),
-            value: 20,
-        });
+    pub fn new(s: Rc<RefCell<S>>, r: Rc<RefCell<R>>) -> Rc<RefCell<Channel2<S, R>>> {
+        let ch = Rc::new(RefCell::new(
+            Channel2 {
+                sender: Rc::downgrade(&s),
+                receiver: Rc::downgrade(&r),
+                value: 20,
+            }
+        ));
         s.borrow_mut().add_out_2(Rc::clone(&ch));
         r.borrow_mut().add_in_2(Rc::clone(&ch));
         ch
