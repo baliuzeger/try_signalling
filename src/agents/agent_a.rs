@@ -57,15 +57,17 @@ impl Generate2 for Agent {
 }
 
 impl Agent {
-    pub fn new() -> Agent {
-        Agent {
-            gen_value: 1,
-            proc_value: 100,
-            out_channels_1: Vec::new(),
-            out_channels_2: Vec::new(),
-            in_channels_1: Vec::new(),
-            in_channels_2: Vec::new(),
-        }
+    pub fn new() -> Rc<RefCell<Agent>> {
+        Rc::new(RefCell::new(
+            Agent{
+                gen_value: 1,
+                proc_value: 100,
+                out_channels_1: Vec::new(),
+                out_channels_2: Vec::new(),
+                in_channels_1: Vec::new(),
+                in_channels_2: Vec::new(),
+            }
+        ))
     }
 
     pub fn event(&self) {
