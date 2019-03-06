@@ -1,3 +1,4 @@
+/// should impl copy trait on Signal for use in agent.generate
 // use crate::agents;
 use std::rc::{Rc, Weak};
 use std::cell::RefCell;
