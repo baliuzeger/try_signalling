@@ -100,5 +100,10 @@ impl Agent {
         self.proc_value += 1;
     }
 
+
+    
+    pub fn show_1(&self) -> Vec<(i32, i32, i32)> {
+        self.buffer_1.iter().map(|s| s.message ).collect()
+    }
     
 }

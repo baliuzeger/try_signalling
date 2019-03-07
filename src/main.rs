@@ -8,10 +8,19 @@ use try_signalling::signals::signal_2::Channel2;
 
 
 fn main() {
-    let x = agent_a::Agent::new();
-    let y = agent_a::Agent::new();
-    let cn1 = Channel1::new(Rc::clone(&x), Rc::clone(&y));
-    x.borrow().event(); // agent_a generate: 1, Channel1: 10, agent_a process: 100. output 111.
-    let cn2 = Channel2::new(Rc::clone(&y), Rc::clone(&x));
-    y.borrow().event(); // agent_a generate: 1, Channel1: 20, agent_a process: 100. output 111.
+    let x = agent_a::Agent::new(0, 0);
+    let y = agent_a::Agent::new(10, 0);
+    let z = agent_a::Agent::new(100, 0);
+    let cn1 = Channel1::new(Rc::clone(&x), Rc::clone(&z));
+    let cn1 = Channel1::new(Rc::clone(&y), Rc::clone(&z));
+    for i in (0..7) {
+        if i == 2 || i == 3 || i == 4 {
+            x.borrow_mut().send_count();
+            y.borrow_mut().send_count();            
+        }
+        x.borrow_mut().evolve();
+        y.borrow_mut().evolve();
+        z.borrow_mut().evolve();
+    }
+    println!("{:?}", z.borrow().show_1());
 }
