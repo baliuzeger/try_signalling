@@ -4,7 +4,7 @@ use std::rc::{Rc, Weak};
 use std::cell::RefCell;
 
 pub struct Signal1 {
-    pub message: i32,
+    pub message: (i32, i32, i32),
 }
 
 pub trait Propagate1 {
@@ -13,7 +13,7 @@ pub trait Propagate1 {
 }
 
 pub trait Process1 {
-    fn process_1(&self, s: Signal1);
+    fn process_1(&mut self, s: Signal1);
     fn add_in_1<C:'static + Propagate1> (&mut self, ch: Rc<RefCell<C>>);
 }
 
@@ -31,12 +31,12 @@ pub struct Channel1<S: Generate1, R: Process1> {
 impl<S: Generate1, R: Process1> Propagate1 for Channel1<S, R> {
     fn refine(&self, s: Signal1) -> Signal1 {
         Signal1 {
-            message: self.value + s.message,
+            message: (s.message.0, self.value, 0)
         }
     }
     
     fn propagate(&self, s: Signal1) {
-        self.receiver.upgrade().unwrap().borrow().process_1(self.refine(s));
+        self.receiver.upgrade().unwrap().borrow_mut().process_1(self.refine(s));
     }
 }
 
