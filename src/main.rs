@@ -1,18 +1,21 @@
-use std::rc::{Rc};
-use std::cell::RefCell;
+// use std::rc::{Rc};
+// use std::cell::RefCell;
 use try_signalling::agents::agent_a;
 use try_signalling::signals::signal_1::Channel1;
-use try_signalling::signals::signal_2::Channel2;
+// use try_signalling::signals::signal_2::Channel2;
 use std::thread;
 use std::sync::mpsc;
-use std::time::Duration;
+// use std::time::Duration;
+// extern crate crossbeam_channel;
+// use std::time::Duration;
+use std::sync::{Mutex, Arc, Weak};
 
 fn main() {
     let x = agent_a::Agent::new(0, 0);
     let y = agent_a::Agent::new(10, 0);
     let z = agent_a::Agent::new(100, 0);
-    let cn1 = Channel1::new(Rc::clone(&x), Rc::clone(&z));
-    let cn1 = Channel1::new(Rc::clone(&y), Rc::clone(&z));
+    let cn_xz = Channel1::new(Arc::clone(&x), Arc::clone(&z));
+    let cn_yz = Channel1::new(Arc::clone(&y), Arc::clone(&z));
     
     let (tx_report_x, rx_report_x) = mpsc::channel();
     let (tx_report_y, rx_report_y) = mpsc::channel();
@@ -28,53 +31,68 @@ fn main() {
                 tx_confirm_x.send(Some(counter)).unwrap();
                 tx_confirm_y.send(Some(counter)).unwrap();
                 tx_confirm_z.send(Some(counter)).unwrap();
+    //            println!("syn: {}.", counter);
+                counter += 1;
             } else {
                 tx_confirm_x.send(None).unwrap();
                 tx_confirm_y.send(None).unwrap();
                 tx_confirm_z.send(None).unwrap();
+                break;
             }
-
-            rx_report_x.recv(None).unwrap();
-            rx_report_y.recv(None).unwrap();
-            rx_report_z.recv(None).unwrap();
+            rx_report_x.recv().unwrap();
+            rx_report_y.recv().unwrap();
+            rx_report_z.recv().unwrap();
         }
     });
     
-    let run x = thread::spawn(move || {
-        if let cf_r = rx_confirm_x.recv().unwrap().expext() == None {
-            
+    let run_x = thread::spawn(move || {
+        loop {
+            let cf_r = rx_confirm_x.recv().unwrap();
+            if let None = cf_r {
+                break;
+            } else {
+                let cf_r = cf_r.expect("got no signal.");
+                if cf_r == 2 || cf_r == 3 || cf_r == 4 {
+                    x.lock().unwrap().send_count();
+                }
+                x.lock().unwrap().evolve();
+                tx_report_x.send(true).unwrap();
+            }
         }
-        let cf_r = rx_confirm_x.recv().unwrap().expext();
-        if cf_r == 2 || cf_r == 3 || cf_r == 4 {
-            x.borrow_mut().send_count();
-        }
-        x.borrow_mut().evolve();
-        tx_report_x.send(True).unwrap();
-    });
-        
-    let run y = thread::spawn(move || {
-        let cf_r = rx_confirm_y.recv().unwrap().expext();
-        if cf_r == 2 || cf_r == 3 || cf_r == 4 {
-            y.borrow_mut().send_count();
-        }
-        y.borrow_mut().evolve();
-        tx_report_y.send(True).unwrap();
     });
 
-    let run z = thread::spawn(move || {
-        rx_confirm_x.recv().unwrap();
-        x.borrow_mut().evolve();
-        tx_report_x.send(True).unwrap();
-    });
-    
-    for i in (0..7) {
-        if i == 2 || i == 3 || i == 4 {
-            x.borrow_mut().send_count();
-            y.borrow_mut().send_count();            
+    let run_y = thread::spawn(move || {
+        loop {
+            let cf_r = rx_confirm_y.recv().unwrap();
+            if let None = cf_r {
+                break;
+            } else {
+                let cf_r = cf_r.expect("got no signal.");
+                if cf_r == 2 || cf_r == 3 || cf_r == 4 {
+                    y.lock().unwrap().send_count();
+                }
+                y.lock().unwrap().evolve();
+                tx_report_y.send(true).unwrap();
+            }
         }
-        x.borrow_mut().evolve();
-        y.borrow_mut().evolve();
-        z.borrow_mut().evolve();
-    }
-    println!("{:?}", z.borrow().show_1());
+    });
+
+    let z1 = Arc::clone(&z);
+        let run_z = thread::spawn(move || {
+        loop {
+            let cf_r = rx_confirm_z.recv().unwrap();
+            if let None = cf_r {
+                break;
+            } else {
+                z1.lock().unwrap().evolve();
+                tx_report_z.send(true).unwrap();
+            }
+        }
+    });
+
+    synchronizer.join().expect("thread syn panicked.");
+    run_x.join().expect("thread x panicked.");
+    run_y.join().expect("thread y panicked.");
+    run_z.join().expect("thread z panicked.");
+    println!("{:?}", z.lock().unwrap().show_1());
 }

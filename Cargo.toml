@@ -5,3 +5,4 @@ authors = ["baliuzeger <baliuzeger@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+crossbeam-channel = "0.3"
