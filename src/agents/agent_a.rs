@@ -3,65 +3,42 @@
 extern crate crossbeam_channel;
 // use std::time::Duration;
 use std::sync::{Mutex, Arc};
-use crate::signals::signal_1::{Signal1, Generate1, Propagate1, Process1};
-use crate::signals::signal_2::{Signal2, Generate2, Propagate2, Process2};
+use crate::signals::signal_1::{Generate1, Propagate1, Process1};
+use crate::signals::signal_1::{Signal1Gen, Signal1Prop, Signal1Proc};
+// use crate::signals::signal_2::{Signal2, Generate2, Propagate2, Process2};
 
 pub struct Agent {
     gen_value: i32,
     proc_value: i32,
-    buffer_1: Vec<Signal1>,
-    out_channels_1: Vec<Arc<Mutex<dyn Propagate1 + Send>>>,
-    in_channels_1: Vec<Arc<Mutex<dyn Propagate1 + Send>>>,
-    buffer_2: Vec<Signal2>,
-    out_channels_2: Vec<Arc<Mutex<dyn Propagate2 + Send>>>,
-    in_channels_2: Vec<Arc<Mutex<dyn Propagate2 + Send>>>,
+    buffer_1: Vec<Signal1Proc>,
+    ports_1_out: Vec<crossbeam_channel::Sender<Signal1Gen>>,
+    ports_1_in: Vec<crossbeam_channel::Receiver<Signal1Prop>>,
 }
 
 impl Process1 for Agent {
-    fn process_1(&mut self, s: Signal1) {
-        self.buffer_1.push(
-            Signal1 {
-                message: (s.message.0, s.message.1, self.proc_value)
-            }
-        );
+
+    fn process_1(&self, s: Signal1Prop) -> Signal1Proc {
+        Signal1Proc {
+            msg_gen: s.msg_gen,
+            msg_prop: s.msg_prop,
+            msg_proc: self.proc_value,
+        }
     }
 
-    fn add_in_1<C:'static + Propagate1 + Send> (&mut self, ch: Arc<Mutex<C>>) {
-        self.in_channels_1.push(ch);
+    fn add_in_1 (&mut self, port_in: crossbeam_channel::Receiver<Signal1Prop>) {
+        self.ports_1_in.push(port_in);
     }
 }
 
 impl Generate1 for Agent {
-    fn generate_1(&self) -> Signal1 {
-        Signal1 {
-            message: (self.gen_value, 0, 0),
+    fn generate_1(&self) -> Signal1Gen {
+        Signal1Gen {
+            msg_gen: self.gen_value,
         }
     }
 
-    fn add_out_1<C:'static + Propagate1 + Send> (&mut self, ch: Arc<Mutex<C>>) {
-        self.out_channels_1.push(ch);
-    }
-}
-
-impl Process2 for Agent {
-    fn process_2(&self, s: Signal2) {
-        println!("{}", self.proc_value + s.message);
-    }
-
-    fn add_in_2<C:'static + Propagate2 + Send> (&mut self, ch: Arc<Mutex<C>>) {
-        self.in_channels_2.push(ch);
-    }
-}
-
-impl Generate2 for Agent {
-    fn generate_2(&self) -> Signal2 {
-        Signal2 {
-            message: self.gen_value,
-        }
-    }
-
-    fn add_out_2<C:'static + Propagate2 + Send> (&mut self, ch: Arc<Mutex<C>>) {
-        self.out_channels_2.push(ch);
+    fn add_out_1 (&mut self, port_out: crossbeam_channel::Sender<Signal1Gen>) {
+        self.ports_1_out.push(port_out);
     }
 }
 
@@ -72,29 +49,25 @@ impl Agent {
                 gen_value,
                 proc_value,
                 buffer_1: Vec::new(),
-                out_channels_1: Vec::new(),
-                in_channels_1: Vec::new(),
-                buffer_2: Vec::new(),
-                out_channels_2: Vec::new(),
-                in_channels_2: Vec::new(),
+                ports_1_in: Vec::new(),
+                ports_1_out: Vec::new(),
             }
         ))
     }
 
-    pub fn event(&self) {
-        // let a_sgnl_1 = self.generate_1();
-        for cn in self.out_channels_1.iter() {
-            cn.lock().unwrap().propagate(self.generate_1());
+    fn store_1(&mut self) {
+        for port in &self.ports_1_in {
+            match port.try_recv() {
+                Ok(s) => self.buffer_1.push(self.process_1(s)),
+                Err(crossbeam_channel::TryRecvError::Disconnected) => panic!("Sender is gone!"), //should output connection & sender id.
+                Err(crossbeam_channel::TryRecvError::Empty) => (),
+            }
         }
-        for cn in self.out_channels_2.iter() {
-            cn.lock().unwrap().propagate(self.generate_2());
-        }        
     }
-
+    
     pub fn send_count(&mut self) {
-        // let a_sgnl_1 = self.generate_1();
-        for cn in self.out_channels_1.iter() {
-            cn.lock().unwrap().propagate(self.generate_1());
+        for port in self.ports_1_out.iter() {
+            port.send(self.generate_1()).unwrap();
         }
         self.gen_value += 1;
     }
@@ -105,8 +78,8 @@ impl Agent {
 
 
     
-    pub fn show_1(&self) -> Vec<(i32, i32, i32)> {
-        self.buffer_1.iter().map(|s| s.message ).collect()
-    }
+    // pub fn show_1(&self) -> Vec<(i32, i32, i32)> {
+    //     self.buffer_1.iter().collect()
+    // }
     
 }
