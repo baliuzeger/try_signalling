@@ -7,15 +7,16 @@ use crate::signals::signal_1::{Generate1, Propagate1, Process1};
 use crate::signals::signal_1::{Signal1Gen, Signal1Prop, Signal1Proc};
 // use crate::signals::signal_2::{Signal2, Generate2, Propagate2, Process2};
 
-pub struct Agent {
+pub struct Model {
     gen_value: i32,
     proc_value: i32,
-    buffer_1: Vec<Signal1Proc>,
+    pub buffer_1: Vec<Signal1Proc>,
     ports_1_out: Vec<crossbeam_channel::Sender<Signal1Gen>>,
     ports_1_in: Vec<crossbeam_channel::Receiver<Signal1Prop>>,
+    event_cond: Option<i32>,
 }
 
-impl Process1 for Agent {
+impl Process1 for Model {
 
     fn process_1(&self, s: Signal1Prop) -> Signal1Proc {
         Signal1Proc {
@@ -30,7 +31,7 @@ impl Process1 for Agent {
     }
 }
 
-impl Generate1 for Agent {
+impl Generate1 for Model {
     fn generate_1(&self) -> Signal1Gen {
         Signal1Gen {
             msg_gen: self.gen_value,
@@ -42,15 +43,16 @@ impl Generate1 for Agent {
     }
 }
 
-impl Agent {
-    pub fn new(gen_value: i32, proc_value: i32) -> Arc<Mutex<Agent>> {
+impl Model {
+    pub fn new(gen_value: i32, proc_value: i32, event_cond: Option<i32>) -> Arc<Mutex<Model>> {
         Arc::new(Mutex::new(
-            Agent{
+            Model{
                 gen_value,
                 proc_value,
                 buffer_1: Vec::new(),
                 ports_1_in: Vec::new(),
                 ports_1_out: Vec::new(),
+                event_cond,
             }
         ))
     }
@@ -73,10 +75,15 @@ impl Agent {
     }
 
     pub fn evolve(&mut self) {
+        self.store_1();
         self.proc_value += 1;
+        if let Some(n) = self.event_cond {
+            if self.proc_value % n == 0 {
+                self.send_count();
+                // then, how to call the connections?
+            }
+        }
     }
-
-
     
     // pub fn show_1(&self) -> Vec<(i32, i32, i32)> {
     //     self.buffer_1.iter().collect()

@@ -1,3 +1,6 @@
 pub mod agent_a;
 
-// pub trait Is_agent {}
+pub trait Agent {
+    fn evolve();
+}
+
