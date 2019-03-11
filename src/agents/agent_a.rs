@@ -9,7 +9,7 @@ use crate::supervisor;
 // use crate::signals::signal_2::{Signal2, Generate2, Propagate2, Process2};
 
 pub struct Model {
-    ports_to_super: Option(PortsToSuper),
+    // ports_to_super: Option(PortsToSuper),
     gen_value: i32,
     proc_value: i32,
     pub buffer_1: Vec<Signal1Proc>,
@@ -59,16 +59,17 @@ impl Agent for Model {
             Some(ps) => {
                 ps.report.send(true).unwrap();
                 ps.confirm.recv().unwrap; // need match broadcast or not??
-            }
+            },
+            None => panic!("agent enroll fail!");
         }
     }
 
-    pub fn enroll(&mut self, report: crossbeam_channel::Sender<bool>, confirm: crossbeam_channel::Receiver<supervisor::Broadcast>) {
-        self.ports_to_super = Some(PortsToSuper{
-            report,
-            confirm,
-        });
-    }
+    // pub fn enroll(&mut self, report: crossbeam_channel::Sender<bool>, confirm: crossbeam_channel::Receiver<supervisor::Broadcast>) {
+    //     self.ports_to_super = Some(PortsToSuper{
+    //         report,
+    //         confirm,
+    //     });
+    // }
     
 }
 
@@ -76,7 +77,7 @@ impl Model {
     pub fn new(gen_value: i32, proc_value: i32, event_cond: Option<i32>) -> Arc<Mutex<Model>> {
         Arc::new(Mutex::new(
             Model{
-                ports_to_super: None,
+                // ports_to_super: None,
                 gen_value,
                 proc_value,
                 buffer_1: Vec::new(),
