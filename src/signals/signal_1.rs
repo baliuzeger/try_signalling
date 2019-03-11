@@ -36,7 +36,7 @@ pub trait Process1 {
 }
 
 pub struct Connection1 {
-    port_in: crossbeam_channel::Receiver<Signal1Gen>,
+    port_in: ImportPair<Signal1Gen>,
     port_out: crossbeam_channel::Sender<Signal1Prop>,
     value: i32,
 }
@@ -52,9 +52,16 @@ impl Propagate1 for Connection1 {
     fn propagate(&self) {
         self.port_out.send(
             self.refine(
-                self.port_in.recv().unwrap()
+                self.port_in.sgnl.recv().unwrap()
             )
         ).unwrap();
+    }
+}
+
+impl PassiveConnection for Connection1 {
+    fn standby(&self) {
+        self.propagate();
+        self.port_in.sync.send(true).unwrap();
     }
 }
 
@@ -63,13 +70,20 @@ impl Connection1 {
     where S:'static + Generate1 + Send,
           R:'static + Process1 + Send
     {
-        let (tx_pre, rx_pre) = crossbeam_channel::bounded::<Signal1Gen>(1);
+        let (tx_pre_sgnl, rx_pre_sgnl) = crossbeam_channel::bounded::<Signal1Gen>(1);
+        let (tx_pre_sync, rx_pre_sync) = crossbeam_channel::bounded::<Signal1Gen>(1);
         let (tx_post, rx_post) = crossbeam_channel::bounded::<Signal1Prop>(1);
-        (*s.lock().unwrap()).add_out_1(tx_pre);
+        (*s.lock().unwrap()).add_out_1(ExportPair {
+            sgnl: tx_pre_sgnl,
+            sync: rx_pre_sync,
+        });
         (*r.lock().unwrap()).add_in_1(rx_post);
         Arc::new(Mutex::new(
             Connection1 {
-                port_in: rx_pre,
+                port_in: ImportPair {
+                    sgnl: rx_pre_sgnl,
+                    sync: tx_pre_sync,
+                },
                 port_out: tx_post,
                 value,
             }

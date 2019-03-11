@@ -10,3 +10,8 @@ pub trait PassiveConnection {
 pub trait ActiveConnection {
     fn evolve(&self);
 }
+
+pub struct ImportPair<T> {
+    sgnl: crossbeam_channel::Receiver<T>,
+    sync: crossbeam_channel::Sender<bool>,
+}

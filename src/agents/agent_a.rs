@@ -11,7 +11,7 @@ pub struct Model {
     gen_value: i32,
     proc_value: i32,
     pub buffer_1: Vec<Signal1Proc>,
-    ports_1_out: Vec<crossbeam_channel::Sender<Signal1Gen>>,
+    ports_1_out: Vec<ExportPair<Signal1Gen>>,
     ports_1_in: Vec<crossbeam_channel::Receiver<Signal1Prop>>,
     event_cond: Option<i32>,
 }
@@ -38,7 +38,7 @@ impl Generate1 for Model {
         }
     }
 
-    fn add_out_1 (&mut self, port_out: crossbeam_channel::Sender<Signal1Gen>) {
+    fn add_out_1 (&mut self, port_out: ExportPair<Signal1Gen>) {
         self.ports_1_out.push(port_out);
     }
 }
@@ -69,9 +69,15 @@ impl Model {
     
     pub fn send_count(&mut self) {
         for port in self.ports_1_out.iter() {
-            port.send(self.generate_1()).unwrap();
+            port.sgnl.send(self.generate_1()).unwrap();
         }
         self.gen_value += 1;
+    }
+
+    fn wait_connections(&self) {
+        for port in self.ports_1_out.iter() {
+            port.sync.recv().unwrap();
+        }
     }
 
     pub fn evolve(&mut self) {
@@ -80,7 +86,7 @@ impl Model {
         if let Some(n) = self.event_cond {
             if self.proc_value % n == 0 {
                 self.send_count();
-                // then, how to call the connections?
+                self.wait_connections();
             }
         }
     }
