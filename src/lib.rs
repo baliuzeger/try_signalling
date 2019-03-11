@@ -21,3 +21,4 @@ mod tests {
 
 pub mod agents;
 pub mod signals;
+pub mod supervisor;

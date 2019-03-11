@@ -5,9 +5,11 @@ extern crate crossbeam_channel;
 use std::sync::{Mutex, Arc};
 use crate::signals::signal_1::{Generate1, Propagate1, Process1};
 use crate::signals::signal_1::{Signal1Gen, Signal1Prop, Signal1Proc};
+use crate::supervisor;
 // use crate::signals::signal_2::{Signal2, Generate2, Propagate2, Process2};
 
 pub struct Model {
+    ports_to_super: Option(PortsToSuper),
     gen_value: i32,
     proc_value: i32,
     pub buffer_1: Vec<Signal1Proc>,
@@ -43,10 +45,38 @@ impl Generate1 for Model {
     }
 }
 
+impl Agent for Model {
+    pub fn evolve(&mut self) {
+        self.store_1();
+        self.proc_value += 1;
+        if let Some(n) = self.event_cond {
+            if self.proc_value % n == 0 {
+                self.send_count();
+                self.wait_connections();
+            }
+        }
+        match self.ports_to_super {
+            Some(ps) => {
+                ps.report.send(true).unwrap();
+                ps.confirm.recv().unwrap; // need match broadcast or not??
+            }
+        }
+    }
+
+    pub fn enroll(&mut self, report: crossbeam_channel::Sender<bool>, confirm: crossbeam_channel::Receiver<supervisor::Broadcast>) {
+        self.ports_to_super = Some(PortsToSuper{
+            report,
+            confirm,
+        });
+    }
+    
+}
+
 impl Model {
     pub fn new(gen_value: i32, proc_value: i32, event_cond: Option<i32>) -> Arc<Mutex<Model>> {
         Arc::new(Mutex::new(
             Model{
+                ports_to_super: None,
                 gen_value,
                 proc_value,
                 buffer_1: Vec::new(),
@@ -80,16 +110,7 @@ impl Model {
         }
     }
 
-    pub fn evolve(&mut self) {
-        self.store_1();
-        self.proc_value += 1;
-        if let Some(n) = self.event_cond {
-            if self.proc_value % n == 0 {
-                self.send_count();
-                self.wait_connections();
-            }
-        }
-    }
+
     
     // pub fn show_1(&self) -> Vec<(i32, i32, i32)> {
     //     self.buffer_1.iter().collect()
