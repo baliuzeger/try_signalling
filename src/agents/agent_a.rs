@@ -12,7 +12,7 @@ pub struct Model {
     gen_value: i32,
     proc_value: i32,
     pub buffer_1: Vec<Signal1Proc>,
-    out_connectionss_1: Vec<OutChannelSet<Signal1Gen, dyn Propagate1 + Send>>,
+    out_connections_1: Vec<OutChannelSet<Signal1Gen, dyn Propagate1 + Send>>,
     in_conections_1: Vec<InChannelSet<SignalProp, dyn Propagate1 + Send>>,
     event_cond: Option<i32>,
 }
@@ -27,7 +27,7 @@ impl Process1 for Model {
     }
 
     fn add_in_1<C:'static + Propagate1 + Send> (&mut self, connection: Arc<Mutex<C>>, crossbeam_channel::Receiver<Signal1Prop>) {
-        self.ports_1_in.push(
+        self.in_connections_1.push(
             OutChannelSet {
                 connection,
                 channel,
@@ -43,7 +43,7 @@ impl Generate1 for Model {
     }
 
     fn add_out_1<C:'static + Propagate1 + Send> (&mut self, connection: Arc<Mutex<C>>, channel: crossbeam_channel::Sender<Signal1Gen>) {
-        self.ports_1_out.push(
+        self.out_connections_1.push(
             OutChannelSet {
                 connection,
                 channel,
@@ -60,7 +60,10 @@ impl Agent for Model {
             None => AgentEvent::N,
             Some(n) => {
                 match self.proc_value % n {
-                    0 => AgentEvent::Y,
+                    0 => {
+                        self.send_count();
+                        AgentEvent::Y
+                    },
                     _ => AgentEvent::N,
                 }
             }
@@ -72,20 +75,19 @@ impl Model {
     pub fn new(gen_value: i32, proc_value: i32, event_cond: Option<i32>) -> Arc<Mutex<Model>> {
         Arc::new(Mutex::new(
             Model{
-                // ports_to_super: None,
                 gen_value,
                 proc_value,
                 buffer_1: Vec::new(),
-                ports_1_in: Vec::new(),
-                ports_1_out: Vec::new(),
+                out_connectionss_1: Vec::new(),
+                in_conections_1: Vec::new(),
                 event_cond,
             }
         ))
     }
-
+    
     fn store_1(&mut self) {
-        for port in &self.ports_1_in {
-            match port.try_recv() {
+        for conn in &self.in_conections_1 {
+            match conn.channel.try_recv() {
                 Ok(s) => self.buffer_1.push(self.process_1(s)),
                 Err(crossbeam_channel::TryRecvError::Disconnected) => panic!("Sender is gone!"), //should output connection & sender id.
                 Err(crossbeam_channel::TryRecvError::Empty) => (),
@@ -94,19 +96,11 @@ impl Model {
     }
     
     pub fn send_count(&mut self) {
-        for port in self.ports_1_out.iter() {
-            port.sgnl.send(self.generate_1()).unwrap();
+        for conn in &self.out_connectionss_1.iter() {
+            conn.channel.send(self.generate_1()).unwrap();
         }
         self.gen_value += 1;
     }
-
-    fn wait_connections(&self) {
-        for port in self.ports_1_out.iter() {
-            port.sync.recv().unwrap();
-        }
-    }
-
-
     
     // pub fn show_1(&self) -> Vec<(i32, i32, i32)> {
     //     self.buffer_1.iter().collect()

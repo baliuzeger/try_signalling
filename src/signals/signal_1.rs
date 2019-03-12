@@ -50,7 +50,7 @@ impl Propagate1 for Connection1 {
     }
     
     fn propagate(&self, s: Signal1Prop) {
-        self.port_out.send(s).unwrap();
+        self.out_agent.channel.send(s).unwrap();
     }
 }
 
