@@ -19,15 +19,8 @@ pub enum Broadcast {
 }
 
 impl Supervisor {
-    pub fn add_agent(&mut self, device: Arc<Mutex<dyn Agent>>) {
-        device.lock().unwrap().enroll(tx_report, rx_confirm);
-        self.agents.push(
-            DeviceSet {
-                device,
-                report: rx_report,
-                confirm: tx_confirm,
-            }
-        );
+    pub fn add_agent(&mut self, agnt: Arc<Mutex<dyn Agent>>) {
+        self.agents.push(agnt);
     }
 
     pub fn add_passive_connection(&mut self, cn: Arc<Mutex<Connection1>>) {
@@ -38,29 +31,82 @@ impl Supervisor {
         // this version make all connections (only passive supported) into threads controlled by pre-agents.
         let mut counter = 0;
         let mut running_agents = Vec::new();
-        let mut running_connections = Vec::new();
+
         for agnt in self.agents {
-            let (tx_report, rx_report) = crossbeam_channel::bounded(0);
-            let (tx_confirm, rx_confirm) = crossbeam_channel::bounded(0);
-            running_agents.push(RunningDeviceSet {
+            let (tx_agnt_report, rx_agnt_report) = crossbeam_channel::bounded(1);
+            let (tx_agnt_confirm, rx_agnt_confirm) = crossbeam_channel::bounded(1);
+            let mut running_connections = Vec::new();
+
+            for conn in agnt.lock().unwrap().out_connections_1 {
+                let (tx_conn_report, rx_conn_report) = crossbeam_channel::bounded(1);
+                let (tx_conn_confirm, rx_conn_confirm) = crossbeam_channel::bounded(1);
+
+                running_connections.push(RunningSet {
+                    instance: thread::spawn(move || {
+                        loop {
+                            match rx_conn_confirm.recv().unwrap() {
+                                Broadcast::End => {break},
+                                Broadcast::Continue => {
+                                    conn.lock().unwrap().standby();
+                                    tx_conn_report.send(true).unwrap();                                    
+                                },
+                            }
+                        }
+                    }),
+                    report: rx_conn_report,
+                    confirm: tx_conn_confirm,
+                })
+            }
+
+            running_agents.push(RunningSet {
                 instance: thread::spawn(move || {
                     loop {
-                        agnt.device.lock().unwrap().evolve();
-                        tx_report.send(true).unwrap();
-                        if let Broadcast::End = rx_confirm.recv().unwrap() {
-                            break;
+                        match rx_agnt_confirm.recv().unwrap() {
+                            Broadcast::End => {
+                                for r_cn in running_connections {
+                                    r_cn.confirm.send(Broadcast::End).unwrap();
+                                }
+                                for r_cn in running_connections {
+                                    r_cn.instance.join().expet("connection join error!");
+                                }
+                                break;
+                            },
+                            Broadcast::Continue => {
+                                agnt.lock().unwrap().evolve();
+                                for r_cn in running_connections {
+                                    r_cn.confirm.send(Broadcast::Continue).unwrap();
+                                }
+                                for r_cn in running_connections {
+                                    r_cn.report.recv().unwrap();
+                                }
+                                tx_agnt_report.send(true).unwrap();
+                            },
                         }
                     }
                 }),
-                report: rx_report,
-                confirm: tx_confirm,
+                report: rx_agnt_report,
+                confirm: tx_agnt_confirm,
             });
         }
-        for p_conn in self.passive_connections {
-            // threads of connections should be initiated by agents!
-            running_connections.push(thread::spawn(move || {
-                
-            }))
+
+        loop {
+            if counter >= total_steps {
+                for r_agnt in running_agents {
+                    r_agnt.confirm.send(Broadcast::End).unwrap();
+                }
+                for r_agnt in running_agents {
+                    r_agnt.instance.join().expect("agent join error!");
+                }
+                break;
+            } else  {
+                for r_agnt in running_agents {
+                    r_agnt.confirm.send(Broadcast::Continue).unwrap();
+                }
+                for r_agnt in running_agents {
+                    r_agnt.report.recv().unwrap();
+                }
+                counter += 1;
+            }
         }
     }
 }

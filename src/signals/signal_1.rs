@@ -36,8 +36,8 @@ pub trait Process1 {
 }
 
 pub struct Connection1 {
-    port_in: ImportPair<Signal1Gen>,
-    port_out: crossbeam_channel::Sender<Signal1Prop>,
+    in_agent: ImportPair<Signal1Gen>,
+    out_agent: crossbeam_channel::Sender<Signal1Prop>,
     value: i32,
 }
 
@@ -60,8 +60,8 @@ impl Propagate1 for Connection1 {
 
 impl PassiveConnection for Connection1 {
     fn standby(&self) {
-        self.propagate();
-        self.port_in.sync.send(true).unwrap();
+        self.try_propagate(); // not block the thread
+        // self.port_in.sync.send(true).unwrap();
     }
 }
 

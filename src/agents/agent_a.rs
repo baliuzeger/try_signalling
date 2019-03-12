@@ -13,8 +13,8 @@ pub struct Model {
     gen_value: i32,
     proc_value: i32,
     pub buffer_1: Vec<Signal1Proc>,
-    ports_1_out: Vec<ExportPair<Signal1Gen>>,
-    ports_1_in: Vec<crossbeam_channel::Receiver<Signal1Prop>>,
+    out_connectionss_1: Vec<OutChannelSet<Signal1Gen>>,
+    in_conections_1: Vec<InChannelSet<SignalProp>>,
     event_cond: Option<i32>,
 }
 
@@ -55,21 +55,7 @@ impl Agent for Model {
                 self.wait_connections();
             }
         }
-        match self.ports_to_super {
-            Some(ps) => {
-                ps.report.send(true).unwrap();
-                ps.confirm.recv().unwrap; // need match broadcast or not??
-            },
-            None => panic!("agent enroll fail!");
-        }
     }
-
-    // pub fn enroll(&mut self, report: crossbeam_channel::Sender<bool>, confirm: crossbeam_channel::Receiver<supervisor::Broadcast>) {
-    //     self.ports_to_super = Some(PortsToSuper{
-    //         report,
-    //         confirm,
-    //     });
-    // }
     
 }
 
