@@ -1,19 +1,17 @@
-// use std::cell::RefCell;
-// use std::rc::Rc;
 extern crate crossbeam_channel;
 // use std::time::Duration;
-use std::sync::{Mutex, Arc};
+use std::sync::{Mutex, Arc, Weak};
 use crate::signals::signal_1::{Generate1, Propagate1, Process1};
 use crate::signals::signal_1::{Signal1Gen, Signal1Prop, Signal1Proc};
-use crate::supervisor;
+use crate::agents::{Agent, OutConnectionSet, InConnectionSet, AgentEvent};
 // use crate::signals::signal_2::{Signal2, Generate2, Propagate2, Process2};
 
 pub struct Model {
     gen_value: i32,
     proc_value: i32,
     pub buffer_1: Vec<Signal1Proc>,
-    out_connections_1: Vec<OutChannelSet<Signal1Gen, dyn Propagate1 + Send>>,
-    in_conections_1: Vec<InChannelSet<SignalProp, dyn Propagate1 + Send>>,
+    out_connections_1: Vec<OutConnectionSet<Signal1Gen, Weak<Mutex<dyn Propagate1 + Send>>>>,
+    in_connections_1: Vec<InConnectionSet<Signal1Prop, Weak<Mutex<dyn Propagate1 + Send>>>>,
     event_cond: Option<i32>,
 }
 
@@ -26,9 +24,9 @@ impl Process1 for Model {
         }
     }
 
-    fn add_in_1<C:'static + Propagate1 + Send> (&mut self, connection: Arc<Mutex<C>>, crossbeam_channel::Receiver<Signal1Prop>) {
+    fn add_in_1<T: 'static + Propagate1 + Send>(&mut self, connection: Weak<Mutex<T>>, channel: crossbeam_channel::Receiver<Signal1Prop>) {
         self.in_connections_1.push(
-            OutChannelSet {
+            InConnectionSet {
                 connection,
                 channel,
             });
@@ -42,9 +40,9 @@ impl Generate1 for Model {
         }
     }
 
-    fn add_out_1<C:'static + Propagate1 + Send> (&mut self, connection: Arc<Mutex<C>>, channel: crossbeam_channel::Sender<Signal1Gen>) {
+    fn add_out_1<T: 'static + Propagate1 + Send> (&mut self, connection: Weak<Mutex<T>>, channel: crossbeam_channel::Sender<Signal1Gen>) {
         self.out_connections_1.push(
-            OutChannelSet {
+            OutConnectionSet {
                 connection,
                 channel,
             }
@@ -53,7 +51,7 @@ impl Generate1 for Model {
 }
 
 impl Agent for Model {
-    pub fn evolve(&mut self) -> AgentEvent {
+    fn evolve(&mut self) -> AgentEvent {
         self.store_1();
         self.proc_value += 1;
         match self.event_cond {
@@ -78,15 +76,15 @@ impl Model {
                 gen_value,
                 proc_value,
                 buffer_1: Vec::new(),
-                out_connectionss_1: Vec::new(),
-                in_conections_1: Vec::new(),
+                out_connections_1: Vec::new(),
+                in_connections_1: Vec::new(),
                 event_cond,
             }
         ))
     }
     
     fn store_1(&mut self) {
-        for conn in &self.in_conections_1 {
+        for conn in &self.in_connections_1 {
             match conn.channel.try_recv() {
                 Ok(s) => self.buffer_1.push(self.process_1(s)),
                 Err(crossbeam_channel::TryRecvError::Disconnected) => panic!("Sender is gone!"), //should output connection & sender id.
@@ -96,7 +94,7 @@ impl Model {
     }
     
     pub fn send_count(&mut self) {
-        for conn in &self.out_connectionss_1.iter() {
+        for conn in &self.out_connections_1 {
             conn.channel.send(self.generate_1()).unwrap();
         }
         self.gen_value += 1;

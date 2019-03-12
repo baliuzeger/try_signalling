@@ -1,5 +1,7 @@
 /// functionality needed:
 /// 1. a channel should not connect from/to an identical agent.
+
+use std::sync::{Arc, Mutex};
 pub mod signal_1;
 // pub mod signal_2;
 

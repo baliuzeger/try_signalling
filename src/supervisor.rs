@@ -1,13 +1,16 @@
 extern crate crossbeam_channel;
-use std::sync::{Mutex, Arc, Weak};
+use std::sync::{Mutex, Arc};
 use std::thread;
+use crate::agents::{Agent, AgentEvent};
+use crate::signals::PassiveConnection;
+use crate::signals::signal_1::{Generate1, Process1, Connection1};
 
 pub struct Supervisor {
     agents: Vec<Arc<Mutex<dyn Agent>>>,
     passive_connections:Vec<Arc<Mutex<dyn PassiveConnection>>>,
 }
 
-struct RunningSet<T> {
+struct RunningSet {
     instance: thread::JoinHandle<()>,
     report: crossbeam_channel::Receiver<bool>,
     confirm: crossbeam_channel::Sender<Broadcast>,
@@ -23,7 +26,10 @@ impl Supervisor {
         self.agents.push(agnt);
     }
 
-    pub fn add_passive_connection(&mut self, cn: Arc<Mutex<Connection1>>) {
+    pub fn add_passive_connection<S, R>(&mut self, cn: Arc<Mutex<Connection1<S, R>>>)
+    where S: 'static + Generate1 + Send,
+          R: 'static + Process1 + Send
+    {
         self.passive_connections.push(cn);
     }
 
@@ -67,7 +73,7 @@ impl Supervisor {
                                     r_cn.confirm.send(Broadcast::End).unwrap();
                                 }
                                 for r_cn in running_connections {
-                                    r_cn.instance.join().expet("connection join error!");
+                                    r_cn.instance.join().expect("connection join error!");
                                 }
                                 break;
                             },

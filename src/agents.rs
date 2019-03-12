@@ -1,21 +1,20 @@
-use std::sync::{Mutex, Arc, Weak};
+//use std::sync::{Mutex, Weak};
 extern crate crossbeam_channel;
-use crate::supervisor;
 
 pub mod agent_a;
 
 pub trait Agent {
-    fn evolve(&mut self);
-    fn enroll(&mut self);
+    fn evolve(&mut self) -> AgentEvent;
+    // fn enroll(&mut self);
 }
 
-struct OutChannelSet<T: Send, C: Send> {
-    connection: Weak<Mutex<C>>,
+struct OutConnectionSet<T: Send, C> {
+    connection: C,
     channel: crossbeam_channel::Sender<T>,
 }
 
-struct InChannelSet<T: Send, C: Send> {
-    connection: Weak<Mutex<C>>,
+struct InConnectionSet<T: Send, C> {
+    connection: C,
     channel: crossbeam_channel::Receiver<T>,
 }
 

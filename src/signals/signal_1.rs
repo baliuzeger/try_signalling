@@ -1,9 +1,6 @@
-// use crate::agents;
-// use std::rc::{Rc, Weak};
-// use std::cell::RefCell;
 extern crate crossbeam_channel;
-// use std::time::Duration;
 use std::sync::{Mutex, Arc, Weak};
+use crate::signals::{InAgentSet, OutAgentSet, PassiveConnection};
 
 pub struct Signal1Gen {
     pub msg_gen: i32
@@ -22,7 +19,7 @@ pub struct Signal1Proc {
 
 pub trait Generate1 {
     fn generate_1 (&self) -> Signal1Gen;
-    fn add_out_1 (&mut self, port_out: crossbeam_channel::Sender<Signal1Gen>);
+    fn add_out_1<T: 'static + Propagate1 + Send> (&mut self, connection: Weak<Mutex<T>>, channel: crossbeam_channel::Sender<Signal1Gen>);
 }
 
 pub trait Propagate1 {
@@ -32,16 +29,16 @@ pub trait Propagate1 {
 
 pub trait Process1 {
     fn process_1(&self, s: Signal1Prop) -> Signal1Proc;
-    fn add_in_1 (&mut self, port_in: crossbeam_channel::Receiver<Signal1Prop>);
+    fn add_in_1<T: 'static + Propagate1 + Send> (&mut self, connection: Weak<Mutex<T>>, channel: crossbeam_channel::Receiver<Signal1Prop>);
 }
 
-pub struct Connection1<S: Generate1, R: Process1> {
+pub struct Connection1<S: Generate1 + Send, R: Process1 + Send> {
     in_agent: InAgentSet<Signal1Gen, S>,
     out_agent: OutAgentSet<Signal1Prop, R>,
     value: i32,
 }
 
-impl Propagate1 for Connection1 {
+impl<S: Generate1 + Send, R: Process1 + Send> Propagate1 for Connection1<S, R> {
     fn refine(&self, s: Signal1Gen) -> Signal1Prop {
         Signal1Prop {
             msg_gen: s.msg_gen,
@@ -54,18 +51,18 @@ impl Propagate1 for Connection1 {
     }
 }
 
-impl PassiveConnection for Connection1 {
+impl<S: Generate1 + Send, R: Process1 + Send> PassiveConnection for Connection1<S, R> {
     fn standby(&self) {
-        match in_agent.try_recv() {
-            Ok(s) => self.propagate(self.refine(s));
+        match self.in_agent.channel.try_recv() {
+            Ok(s) => self.propagate(self.refine(s)),
             Err(crossbeam_channel::TryRecvError::Disconnected) => panic!("Sender is gone!"), //should output connection & sender id.
             Err(crossbeam_channel::TryRecvError::Empty) => (),
         }
     }
 }
 
-impl Connection1 {
-    pub fn new<S, R>(s: Arc<Mutex<S>>, r: Arc<Mutex<R>>, value: i32) -> Arc<Mutex<Connection1>>
+impl<S: Generate1 + Send, R: Process1 + Send> Connection1<S, R> {
+    pub fn new(s: Arc<Mutex<S>>, r: Arc<Mutex<R>>, value: i32) -> Arc<Mutex<Connection1<S, R>>>
     where S:'static + Generate1 + Send,
           R:'static + Process1 + Send
     {
@@ -73,19 +70,19 @@ impl Connection1 {
         let (tx_post, rx_post) = crossbeam_channel::bounded::<Signal1Prop>(1);
         let conn = Arc::new(Mutex::new(
             Connection1 {
-                in_agnet: InAgentSet {
+                in_agent: InAgentSet {
                     agent: s,
                     channel: rx_pre,
                 },
-                port_out: OutAgentSet {
+                out_agent: OutAgentSet {
                     agent: r,
                     channel: tx_post,
-                }
+                },
                 value,
             }
         ));
-        (*s.lock().unwrap()).add_out_1(Arc::downgrade(conn), tx_pre);
-        (*r.lock().unwrap()).add_in_1(Arc::downgrade(conn), rx_post);
+        (*s.lock().unwrap()).add_out_1(Arc::downgrade(&conn), tx_pre);
+        (*r.lock().unwrap()).add_in_1(Arc::downgrade(&conn), rx_post);
         conn
     }
 }
