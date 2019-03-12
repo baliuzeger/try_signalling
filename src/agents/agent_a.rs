@@ -9,17 +9,15 @@ use crate::supervisor;
 // use crate::signals::signal_2::{Signal2, Generate2, Propagate2, Process2};
 
 pub struct Model {
-    // ports_to_super: Option(PortsToSuper),
     gen_value: i32,
     proc_value: i32,
     pub buffer_1: Vec<Signal1Proc>,
-    out_connectionss_1: Vec<OutChannelSet<Signal1Gen>>,
-    in_conections_1: Vec<InChannelSet<SignalProp>>,
+    out_connectionss_1: Vec<OutChannelSet<Signal1Gen, dyn Propagate1 + Send>>,
+    in_conections_1: Vec<InChannelSet<SignalProp, dyn Propagate1 + Send>>,
     event_cond: Option<i32>,
 }
 
 impl Process1 for Model {
-
     fn process_1(&self, s: Signal1Prop) -> Signal1Proc {
         Signal1Proc {
             msg_gen: s.msg_gen,
@@ -28,8 +26,12 @@ impl Process1 for Model {
         }
     }
 
-    fn add_in_1 (&mut self, port_in: crossbeam_channel::Receiver<Signal1Prop>) {
-        self.ports_1_in.push(port_in);
+    fn add_in_1<C:'static + Propagate1 + Send> (&mut self, connection: Arc<Mutex<C>>, crossbeam_channel::Receiver<Signal1Prop>) {
+        self.ports_1_in.push(
+            OutChannelSet {
+                connection,
+                channel,
+            });
     }
 }
 
@@ -40,23 +42,30 @@ impl Generate1 for Model {
         }
     }
 
-    fn add_out_1 (&mut self, port_out: ExportPair<Signal1Gen>) {
-        self.ports_1_out.push(port_out);
+    fn add_out_1<C:'static + Propagate1 + Send> (&mut self, connection: Arc<Mutex<C>>, channel: crossbeam_channel::Sender<Signal1Gen>) {
+        self.ports_1_out.push(
+            OutChannelSet {
+                connection,
+                channel,
+            }
+        );
     }
 }
 
 impl Agent for Model {
-    pub fn evolve(&mut self) {
+    pub fn evolve(&mut self) -> AgentEvent {
         self.store_1();
         self.proc_value += 1;
-        if let Some(n) = self.event_cond {
-            if self.proc_value % n == 0 {
-                self.send_count();
-                self.wait_connections();
+        match self.event_cond {
+            None => AgentEvent::N,
+            Some(n) => {
+                match self.proc_value % n {
+                    0 => AgentEvent::Y,
+                    _ => AgentEvent::N,
+                }
             }
         }
     }
-    
 }
 
 impl Model {

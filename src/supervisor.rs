@@ -72,12 +72,13 @@ impl Supervisor {
                                 break;
                             },
                             Broadcast::Continue => {
-                                agnt.lock().unwrap().evolve();
-                                for r_cn in running_connections {
-                                    r_cn.confirm.send(Broadcast::Continue).unwrap();
-                                }
-                                for r_cn in running_connections {
-                                    r_cn.report.recv().unwrap();
+                                if let AgentEvent::Y = agnt.lock().unwrap().evolve() {
+                                    for r_cn in running_connections {
+                                        r_cn.confirm.send(Broadcast::Continue).unwrap();
+                                    }
+                                    for r_cn in running_connections {
+                                        r_cn.report.recv().unwrap();
+                                    }                                    
                                 }
                                 tx_agnt_report.send(true).unwrap();
                             },

@@ -9,18 +9,17 @@ pub trait Agent {
     fn enroll(&mut self);
 }
 
-struct OutChannelSet<T> {
-    connection: Weak<Mutex<dyn Propagate1 + Send>>,
+struct OutChannelSet<T: Send, C: Send> {
+    connection: Weak<Mutex<C>>,
     channel: crossbeam_channel::Sender<T>,
-    // sync: crossbeam_channel::Receiver<bool>,
 }
 
-struct InChannelSet {
-    connection: Weak<Mutex<dyn Propagate1 + Send>>,
+struct InChannelSet<T: Send, C: Send> {
+    connection: Weak<Mutex<C>>,
     channel: crossbeam_channel::Receiver<T>,
 }
 
-// struct PortsToSuper {
-//     report: crossbeam_channel::Sender<bool>,
-//     confirm: crossbeam_channel::Receiver<supervisor::Broadcast>,
-// }
+pub enum AgentEvent {
+    Y,
+    N,
+}

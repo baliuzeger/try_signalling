@@ -27,7 +27,7 @@ pub trait Generate1 {
 
 pub trait Propagate1 {
     fn refine(&self, s: Signal1Gen) -> Signal1Prop;
-    fn propagate(&self);
+    fn propagate(&self, s: Signal1Prop);
 }
 
 pub trait Process1 {
@@ -35,9 +35,9 @@ pub trait Process1 {
     fn add_in_1 (&mut self, port_in: crossbeam_channel::Receiver<Signal1Prop>);
 }
 
-pub struct Connection1 {
-    in_agent: ImportPair<Signal1Gen>,
-    out_agent: crossbeam_channel::Sender<Signal1Prop>,
+pub struct Connection1<S: Generate1, R: Process1> {
+    in_agent: InAgentSet<Signal1Gen, S>,
+    out_agent: OutAgentSet<Signal1Prop, R>,
     value: i32,
 }
 
@@ -49,19 +49,18 @@ impl Propagate1 for Connection1 {
         }
     }
     
-    fn propagate(&self) {
-        self.port_out.send(
-            self.refine(
-                self.port_in.sgnl.recv().unwrap()
-            )
-        ).unwrap();
+    fn propagate(&self, s: Signal1Prop) {
+        self.port_out.send(s).unwrap();
     }
 }
 
 impl PassiveConnection for Connection1 {
     fn standby(&self) {
-        self.try_propagate(); // not block the thread
-        // self.port_in.sync.send(true).unwrap();
+        match in_agent.try_recv() {
+            Ok(s) => self.propagate(self.refine(s));
+            Err(crossbeam_channel::TryRecvError::Disconnected) => panic!("Sender is gone!"), //should output connection & sender id.
+            Err(crossbeam_channel::TryRecvError::Empty) => (),
+        }
     }
 }
 
@@ -70,24 +69,23 @@ impl Connection1 {
     where S:'static + Generate1 + Send,
           R:'static + Process1 + Send
     {
-        let (tx_pre_sgnl, rx_pre_sgnl) = crossbeam_channel::bounded::<Signal1Gen>(1);
-        let (tx_pre_sync, rx_pre_sync) = crossbeam_channel::bounded::<Signal1Gen>(1);
+        let (tx_pre, rx_pre) = crossbeam_channel::bounded::<Signal1Gen>(1);
         let (tx_post, rx_post) = crossbeam_channel::bounded::<Signal1Prop>(1);
-        (*s.lock().unwrap()).add_out_1(ExportPair {
-            sgnl: tx_pre_sgnl,
-            sync: rx_pre_sync,
-        });
-        (*r.lock().unwrap()).add_in_1(rx_post);
-        Arc::new(Mutex::new(
+        let conn = Arc::new(Mutex::new(
             Connection1 {
-                port_in: ImportPair {
-                    sgnl: rx_pre_sgnl,
-                    sync: tx_pre_sync,
+                in_agnet: InAgentSet {
+                    agent: s,
+                    channel: rx_pre,
                 },
-                port_out: tx_post,
+                port_out: OutAgentSet {
+                    agent: r,
+                    channel: tx_post,
+                }
                 value,
             }
-        ))
-            
+        ));
+        (*s.lock().unwrap()).add_out_1(Arc::downgrade(conn), tx_pre);
+        (*r.lock().unwrap()).add_in_1(Arc::downgrade(conn), rx_post);
+        conn
     }
 }

@@ -11,13 +11,12 @@ pub trait ActiveConnection {
     fn evolve(&self);
 }
 
-pub struct InAgentSet<S: Generate1, T: Send> {
-    agent: Arc<Mutex<S>>,
-    sgnl: crossbeam_channel::Receiver<T>,
-//    sync: crossbeam_channel::Sender<bool>,
+pub struct InAgentSet<T: Send, A: Send> {
+    agent: Arc<Mutex<A>>,
+    channel: crossbeam_channel::Receiver<T>,
 }
 
-pub struct OutAgnetSet<R: Process1, T: Send> {
-    agent: Arc<Mutex<R>>,
-    sgnl: crossbeam_channel::Sender<T>,
+pub struct OutAgentSet<T: Send, A: Send> {
+    agent: Arc<Mutex<A>>,
+    channel: crossbeam_channel::Sender<T>,
 }
