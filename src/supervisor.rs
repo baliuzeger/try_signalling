@@ -8,7 +8,7 @@ use crate::signals::PassiveConnection;
 use crate::signals::signal_1::{Generate1, Process1, Connection1};
 
 pub struct Supervisor {
-    agents: Vec<Arc<Mutex<dyn Agent>>>,
+    agents: Vec<Arc<Mutex<dyn Agent + Send>>>,
     passive_connections:Vec<Arc<Mutex<dyn PassiveConnection>>>,
 }
 
@@ -24,7 +24,7 @@ pub enum Broadcast {
 }
 
 impl Supervisor {
-    pub fn add_agent(&mut self, agnt: Arc<Mutex<dyn Agent>>) {
+    pub fn add_agent(&mut self, agnt: Arc<Mutex<dyn Agent + Send>>) {
         self.agents.push(agnt);
     }
 
@@ -40,12 +40,12 @@ impl Supervisor {
         let mut counter = 0;
         let mut running_agents = Vec::new();
 
-        for agnt in self.agents {
+        for agnt in &self.agents {
             let (tx_agnt_report, rx_agnt_report) = crossbeam_channel::bounded(1);
             let (tx_agnt_confirm, rx_agnt_confirm) = crossbeam_channel::bounded(1);
-
+            let running_agnt = Arc::clone(agnt);
             running_agents.push(RunningSet {
-                instance: thread::spawn(move || {agnt.lock().unwrap().run(rx_agnt_confirm, tx_agnt_report)}),
+                instance: thread::spawn(move || {running_agnt.lock().unwrap().run(rx_agnt_confirm, tx_agnt_report)}),
                 report: rx_agnt_report,
                 confirm: tx_agnt_confirm,
             });
@@ -53,7 +53,7 @@ impl Supervisor {
 
         loop {
             if counter >= total_steps {
-                for r_agnt in running_agents {
+                for r_agnt in &running_agents {
                     r_agnt.confirm.send(Broadcast::End).unwrap();
                 }
                 for r_agnt in running_agents {
@@ -61,10 +61,10 @@ impl Supervisor {
                 }
                 break;
             } else  {
-                for r_agnt in running_agents {
+                for r_agnt in &running_agents {
                     r_agnt.confirm.send(Broadcast::Continue).unwrap();
                 }
-                for r_agnt in running_agents {
+                for r_agnt in &running_agents {
                     r_agnt.report.recv().unwrap();
                 }
                 counter += 1;

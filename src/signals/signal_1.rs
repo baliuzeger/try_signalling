@@ -88,11 +88,11 @@ impl<S: Generate1 + Send, R: Process1 + Send> Connection1<S, R> {
         let conn = Arc::new(Mutex::new(
             Connection1 {
                 in_agent: InAgentSet {
-                    agent: s,
+                    agent: Arc::clone(&s),
                     channel: rx_pre,
                 },
                 out_agent: OutAgentSet {
-                    agent: r,
+                    agent: Arc::clone(&r),
                     channel: tx_post,
                 },
                 value,
