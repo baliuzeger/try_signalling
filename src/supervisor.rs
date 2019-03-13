@@ -43,56 +43,9 @@ impl Supervisor {
         for agnt in self.agents {
             let (tx_agnt_report, rx_agnt_report) = crossbeam_channel::bounded(1);
             let (tx_agnt_confirm, rx_agnt_confirm) = crossbeam_channel::bounded(1);
-            let mut running_connections = Vec::new();
-
-            for conn in agnt.lock().unwrap().out_connections_1 {
-                let (tx_conn_report, rx_conn_report) = crossbeam_channel::bounded(1);
-                let (tx_conn_confirm, rx_conn_confirm) = crossbeam_channel::bounded(1);
-
-                running_connections.push(RunningSet {
-                    instance: thread::spawn(move || {
-                        loop {
-                            match rx_conn_confirm.recv().unwrap() {
-                                Broadcast::End => {break},
-                                Broadcast::Continue => {
-                                    conn.lock().unwrap().standby();
-                                    tx_conn_report.send(true).unwrap();                                    
-                                },
-                            }
-                        }
-                    }),
-                    report: rx_conn_report,
-                    confirm: tx_conn_confirm,
-                })
-            }
 
             running_agents.push(RunningSet {
-                instance: thread::spawn(move || {
-                    loop {
-                        match rx_agnt_confirm.recv().unwrap() {
-                            Broadcast::End => {
-                                for r_cn in running_connections {
-                                    r_cn.confirm.send(Broadcast::End).unwrap();
-                                }
-                                for r_cn in running_connections {
-                                    r_cn.instance.join().expect("connection join error!");
-                                }
-                                break;
-                            },
-                            Broadcast::Continue => {
-                                if let AgentEvent::Y = agnt.lock().unwrap().evolve() {
-                                    for r_cn in running_connections {
-                                        r_cn.confirm.send(Broadcast::Continue).unwrap();
-                                    }
-                                    for r_cn in running_connections {
-                                        r_cn.report.recv().unwrap();
-                                    }                                    
-                                }
-                                tx_agnt_report.send(true).unwrap();
-                            },
-                        }
-                    }
-                }),
+                instance: agnt.lock().unwrap().run(rx_agnt_confirm, tx_agnt_report),
                 report: rx_agnt_report,
                 confirm: tx_agnt_confirm,
             });

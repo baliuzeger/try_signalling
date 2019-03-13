@@ -54,7 +54,7 @@ impl Generate1 for Model {
 }
 
 impl Agent for Model {
-    fn run<F>(&mut self, rx_confirm: CCReceiver, tx_report: CCSender) -> JoinHandle {
+    fn run(&mut self, rx_confirm: CCReceiver, tx_report: CCSender) -> JoinHandle {
         let mut running_connections = Vec::new();
 
         for conn in agnt.lock().unwrap().out_connections_1 {
@@ -63,25 +63,7 @@ impl Agent for Model {
             let (tx_conn_confirm, rx_conn_confirm) = crossbeam_channel::bounded(1);
 
             running_connections.push(RunningSet {
-                // instance: running_conn.lock().unwrap.thread_under_agent(rx_conn_confirm, tx_conn_report),
-
-                instance: thread::spawn(move || {
-                    loop {
-                        match rx_conn_confirm.try_recv().unwrap() {
-                            Ok(s) => {
-                                match s {
-                                    Broadcast::End => break,
-                                    Broadcast::Continue => panic!("connection get Continue!"),
-                                }
-                            },
-                            Err(crossbeam_channel::TryRecvError::Disconnected) => panic!("Sender is gone!"),
-                            Err(crossbeam_channel::TryRecvError::Empty) => {
-                                if running_conn.lock().unwrap().standby() {
-                                    tx_conn_report.send(true).unwrap();                                                                                          }
-                            },
-                        }
-                    }
-                }),
+                instance: running_conn.lock().unwrap.thread_under_agent(rx_conn_confirm, tx_conn_report),
                 report: rx_conn_report,
                 confirm: tx_conn_confirm,
             });
