@@ -1,4 +1,7 @@
 extern crate crossbeam_channel;
+use crossbeam_channel::Receiver as CCReceiver;
+use crossbeam_channel::Sender as CCSender;
+
 // use std::time::Duration;
 use std::sync::{Mutex, Arc, Weak};
 use crate::signals::signal_1::{Generate1, Propagate1, Process1};
@@ -24,7 +27,7 @@ impl Process1 for Model {
         }
     }
 
-    fn add_in_1<T: 'static + Propagate1 + Send>(&mut self, connection: Weak<Mutex<T>>, channel: crossbeam_channel::Receiver<Signal1Prop>) {
+    fn add_in_1<T: 'static + Propagate1 + Send>(&mut self, connection: Weak<Mutex<T>>, channel: CCReceiver<Signal1Prop>) {
         self.in_connections_1.push(
             InConnectionSet {
                 connection,
@@ -40,7 +43,7 @@ impl Generate1 for Model {
         }
     }
 
-    fn add_out_1<T: 'static + Propagate1 + Send> (&mut self, connection: Weak<Mutex<T>>, channel: crossbeam_channel::Sender<Signal1Gen>) {
+    fn add_out_1<T: 'static + Propagate1 + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCSender<Signal1Gen>) {
         self.out_connections_1.push(
             OutConnectionSet {
                 connection,
@@ -51,6 +54,62 @@ impl Generate1 for Model {
 }
 
 impl Agent for Model {
+    fn run<F>(&mut self, rx_confirm: CCReceiver, tx_report: CCSender) -> JoinHandle {
+        let mut running_connections = Vec::new();
+
+        for conn in agnt.lock().unwrap().out_connections_1 {
+            let running_conn = conn.upgrade().unwrap();
+            let (tx_conn_report, rx_conn_report) = crossbeam_channel::bounded(1);
+            let (tx_conn_confirm, rx_conn_confirm) = crossbeam_channel::bounded(1);
+
+            running_connections.push(RunningSet {
+                // instance: running_conn.lock().unwrap.thread_under_agent(rx_conn_confirm, tx_conn_report),
+
+                instance: thread::spawn(move || {
+                    loop {
+                        match rx_conn_confirm.try_recv().unwrap() {
+                            Ok(s) => {
+                                match s {
+                                    Broadcast::End => break,
+                                    Broadcast::Continue => panic!("connection get Continue!"),
+                                }
+                            },
+                            Err(crossbeam_channel::TryRecvError::Disconnected) => panic!("Sender is gone!"),
+                            Err(crossbeam_channel::TryRecvError::Empty) => {
+                                if running_conn.lock().unwrap().standby() {
+                                    tx_conn_report.send(true).unwrap();                                                                                          }
+                            },
+                        }
+                    }
+                }),
+                report: rx_conn_report,
+                confirm: tx_conn_confirm,
+            });
+
+            loop {
+                match rx_confirm.recv().unwrap() {
+                    Broadcast::End => {
+                        for r_cn in running_connections {
+                            r_cn.confirm.send(Broadcast::End).unwrap();
+                        }
+                        for r_cn in running_connections {
+                            r_cn.instance.join().expect("connection join error!");
+                        }
+                        break;
+                    },
+                    Broadcast::Continue => {
+                        if let AgentEvent::Y = agnt.lock().unwrap().evolve() {
+                            for r_cn in running_connections {
+                                r_cn.report.recv().unwrap();
+                            }                                    
+                        }
+                        tx_report.send(true).unwrap();
+                    },
+                }
+            }
+        }
+    }
+
     fn evolve(&mut self) -> AgentEvent {
         self.store_1();
         self.proc_value += 1;

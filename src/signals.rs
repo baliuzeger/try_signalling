@@ -1,6 +1,7 @@
 /// functionality needed:
 /// 1. a channel should not connect from/to an identical agent.
-
+use crossbeam_channel::Receiver as CCReceiver;
+use crossbeam_channel::Sender as CCSender;
 use std::sync::{Arc, Mutex};
 pub mod signal_1;
 // pub mod signal_2;
@@ -15,10 +16,10 @@ pub trait ActiveConnection {
 
 pub struct InAgentSet<T: Send, A: Send> {
     agent: Arc<Mutex<A>>,
-    channel: crossbeam_channel::Receiver<T>,
+    channel: CCReceiver<T>,
 }
 
 pub struct OutAgentSet<T: Send, A: Send> {
     agent: Arc<Mutex<A>>,
-    channel: crossbeam_channel::Sender<T>,
+    channel: CCSender<T>,
 }

@@ -1,4 +1,6 @@
 extern crate crossbeam_channel;
+use crossbeam_channel::Receiver as CCReceiver;
+use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc};
 use std::thread;
 use crate::agents::{Agent, AgentEvent};
@@ -12,8 +14,8 @@ pub struct Supervisor {
 
 struct RunningSet {
     instance: thread::JoinHandle<()>,
-    report: crossbeam_channel::Receiver<bool>,
-    confirm: crossbeam_channel::Sender<Broadcast>,
+    report: CCReceiver<bool>,
+    confirm: CCSender<Broadcast>,
 }
 
 pub enum Broadcast {
