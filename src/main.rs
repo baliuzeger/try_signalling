@@ -2,20 +2,53 @@
 // use std::cell::RefCell;
 use try_signalling::agents::agent_a;
 use try_signalling::signals::signal_1::Connection1;
+use try_signalling::supervisor::{Supervisor};
 // use try_signalling::signals::signal_2::Channel2;
-use std::thread;
-use std::sync::mpsc;
+// use std::thread;
 // use std::time::Duration;
 // extern crate crossbeam_channel;
 // use std::time::Duration;
-use std::sync::{Mutex, Arc, Weak};
+use std::sync::{Arc};
 
 fn main() {
-    // let x = agent_a::Agent::new(0, 0);
-    // let y = agent_a::Agent::new(10, 0);
-    // let z = agent_a::Agent::new(100, 0);
-    // let cn_xz = Connection1::new(Arc::clone(&x), Arc::clone(&z));
-    // let cn_yz = Connection1::new(Arc::clone(&y), Arc::clone(&z));
+
+    let mut super_1 = Supervisor {
+        agents: Vec::new(),
+        passive_connections: Vec::new(),
+    };
+
+    super_1.add_agent(agent_a::Model::new(0, 0, Some(2)));
+    super_1.add_agent(agent_a::Model::new(10, 0, Some(2)));
+    super_1.add_agent(agent_a::Model::new(100, 0, None));
+    let cn = Connection1::new(
+        // Arc::clone(&super_1.agents[0]),
+        // Arc::clone(&super_1.agents[2]),
+        Arc::clone(&(super_1.agent_by_id(0))),
+        Arc::clone(&(super_1.agent_by_id(2))),
+        1
+    );
+
+    // this part is OK
+    
+    // let agnt_x = agent_a::Model::new(0, 0, Some(2));
+    // let agnt_y = agent_a::Model::new(10, 0, Some(2));
+    // let cn1 = Connection1::new(
+    //     Arc::clone(&agnt_x),
+    //     Arc::clone(&agnt_y),
+    //     1
+    // );
+
+    
+    // super_1.add_passive_connection(Connection1::new(
+    //     Arc::clone(&super_1.agents[0]),
+    //     Arc::clone(&super_1.agents[2]),
+    //     1
+    // ));
+    // super_1.add_passive_connection(Connection1::new(
+    //     Arc::clone(&super_1.agents[1]),
+    //     Arc::clone(&super_1.agents[2]),
+    //     2
+    // ));
     
     // let (tx_report_x, rx_report_x) = mpsc::channel();
     // let (tx_report_y, rx_report_y) = mpsc::channel();

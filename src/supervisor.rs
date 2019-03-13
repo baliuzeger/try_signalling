@@ -8,8 +8,8 @@ use crate::signals::PassiveConnection;
 use crate::signals::signal_1::{Generate1, Process1, Connection1};
 
 pub struct Supervisor {
-    agents: Vec<Arc<Mutex<dyn Agent + Send>>>,
-    passive_connections:Vec<Arc<Mutex<dyn PassiveConnection>>>,
+    pub agents: Vec<Arc<Mutex<dyn Agent + Send>>>,
+    pub passive_connections:Vec<Arc<Mutex<dyn PassiveConnection>>>,
 }
 
 pub struct RunningSet {
@@ -28,6 +28,10 @@ impl Supervisor {
         self.agents.push(agnt);
     }
 
+    pub fn agent_by_id(&self, n: usize) -> Arc<Mutex<dyn Agent + Send>> {
+        Arc::clone(&self.agents[n])
+    }
+    
     pub fn add_passive_connection<S, R>(&mut self, cn: Arc<Mutex<Connection1<S, R>>>)
     where S: 'static + Generate1 + Send,
           R: 'static + Process1 + Send
