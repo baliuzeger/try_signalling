@@ -2,8 +2,8 @@ extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc, Weak};
-use std::thread::JoinHandle;
 use crate::signals::{InAgentSet, OutAgentSet, PassiveConnection};
+use crate::supervisor::Broadcast;
 
 pub struct Signal1Gen {
     pub msg_gen: i32
@@ -22,7 +22,7 @@ pub struct Signal1Proc {
 
 pub trait Generate1 {
     fn generate_1 (&self) -> Signal1Gen;
-    fn add_out_1<T: 'static + Propagate1 + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCSender<Signal1Gen>);
+    fn add_out_1<T: 'static + PassivePropagate1 + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCSender<Signal1Gen>);
 }
 
 pub trait Propagate1 {
@@ -41,6 +41,10 @@ pub struct Connection1<S: Generate1 + Send, R: Process1 + Send> {
     value: i32,
 }
 
+pub trait  PassivePropagate1: PassiveConnection + Propagate1 {}
+
+impl<S: Generate1 + Send, R: Process1 + Send> PassivePropagate1 for Connection1<S, R> {}
+
 impl<S: Generate1 + Send, R: Process1 + Send> Propagate1 for Connection1<S, R> {
     fn refine(&self, s: Signal1Gen) -> Signal1Prop {
         Signal1Prop {
@@ -55,35 +59,22 @@ impl<S: Generate1 + Send, R: Process1 + Send> Propagate1 for Connection1<S, R> {
 }
 
 impl<S: Generate1 + Send, R: Process1 + Send> PassiveConnection for Connection1<S, R> {
-    fn standby(&self) -> bool {
-        match self.in_agent.channel.try_recv() {
-            Ok(s) => {
-                self.propagate(self.refine(s));
-                true
-            },
-            Err(crossbeam_channel::TryRecvError::Disconnected) => panic!("Sender is gone!"), //should output connection & sender id.
-            Err(crossbeam_channel::TryRecvError::Empty) => false,
-        }
-    }
-
-    fn run_under_agent(&self, rx_confirm: CCReceiver, tx_report: CCSender) -> JoinHandle {
-        thread::spawn(move || {
-            loop {
-                match rx_confirm.try_recv().unwrap() {
-                    Ok(s) => {
-                        match s {
-                            Broadcast::End => break,
-                            Broadcast::Continue => panic!("connection shouldn't get Continue!"),
-                        }
-                    },
-                    Err(crossbeam_channel::TryRecvError::Disconnected) => panic!("Sender is gone!"),
-                    Err(crossbeam_channel::TryRecvError::Empty) => {
-                        if running_conn.lock().unwrap().standby() {
-                            tx_conn_report.send(true).unwrap();                                                                                          }
-                    },
-                }
+    fn run_under_agent(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>){
+        loop {
+            match rx_confirm.try_recv() {
+                Ok(s) => {
+                    match s {
+                        Broadcast::End => break,
+                        Broadcast::Continue => panic!("connection shouldn't get Continue!"),
+                    }
+                },
+                Err(crossbeam_channel::TryRecvError::Disconnected) => panic!("Sender is gone!"),
+                Err(crossbeam_channel::TryRecvError::Empty) => {
+                    if self.standby() {
+                        tx_report.send(true).unwrap();                                                                                          }
+                },
             }
-        })
+        }
     }
 }
 
@@ -110,5 +101,16 @@ impl<S: Generate1 + Send, R: Process1 + Send> Connection1<S, R> {
         (*s.lock().unwrap()).add_out_1(Arc::downgrade(&conn), tx_pre);
         (*r.lock().unwrap()).add_in_1(Arc::downgrade(&conn), rx_post);
         conn
+    }
+
+    fn standby(&self) -> bool {
+        match self.in_agent.channel.try_recv() {
+            Ok(s) => {
+                self.propagate(self.refine(s));
+                true
+            },
+            Err(crossbeam_channel::TryRecvError::Disconnected) => panic!("Sender is gone!"), //should output connection & sender id.
+            Err(crossbeam_channel::TryRecvError::Empty) => false,
+        }
     }
 }

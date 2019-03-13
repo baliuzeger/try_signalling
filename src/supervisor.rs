@@ -3,7 +3,7 @@ use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc};
 use std::thread;
-use crate::agents::{Agent, AgentEvent};
+use crate::agents::Agent;
 use crate::signals::PassiveConnection;
 use crate::signals::signal_1::{Generate1, Process1, Connection1};
 
@@ -12,10 +12,10 @@ pub struct Supervisor {
     passive_connections:Vec<Arc<Mutex<dyn PassiveConnection>>>,
 }
 
-struct RunningSet {
-    instance: thread::JoinHandle<()>,
-    report: CCReceiver<bool>,
-    confirm: CCSender<Broadcast>,
+pub struct RunningSet {
+    pub instance: thread::JoinHandle<()>,
+    pub report: CCReceiver<bool>,
+    pub confirm: CCSender<Broadcast>,
 }
 
 pub enum Broadcast {
@@ -45,7 +45,7 @@ impl Supervisor {
             let (tx_agnt_confirm, rx_agnt_confirm) = crossbeam_channel::bounded(1);
 
             running_agents.push(RunningSet {
-                instance: agnt.lock().unwrap().run(rx_agnt_confirm, tx_agnt_report),
+                instance: thread::spawn(move || {agnt.lock().unwrap().run(rx_agnt_confirm, tx_agnt_report)}),
                 report: rx_agnt_report,
                 confirm: tx_agnt_confirm,
             });
