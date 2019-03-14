@@ -21,7 +21,7 @@ fn main() {
 
     let name_pp_a1 = String::from("a#1");
 
-    let pp_a1 = APopulation::new(); // why I don't use mut and passed?
+    let pp_a1 = APopulation::new();
 
     sp0.add_population(
         name_pp_a1.clone(),
