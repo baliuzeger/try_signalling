@@ -14,7 +14,7 @@ use std::collections::HashMap;
 
 fn main() {
 
-    let mut super_1 = Supervisor {
+    let mut sp0 = Supervisor {
         populations: HashMap::new(),
         passive_connections: Vec::new(),
     };
@@ -23,59 +23,29 @@ fn main() {
 
     let pp_a1 = APopulation::new(); // why I don't use mut and passed?
 
-    super_1.add_population(
+    sp0.add_population(
         name_pp_a1.clone(),
         Arc::clone(&pp_a1)
     );
 
-    pp_a1.lock().unwrap().add_agent(AAgent::new(0, 10, Some(2)));
+    pp_a1.lock().unwrap().add_agent(AAgent::new(0, 0, Some(2)));
+    pp_a1.lock().unwrap().add_agent(AAgent::new(10, 0, Some(2)));
+    pp_a1.lock().unwrap().add_agent(AAgent::new(100, 10, None));
+    // pp_a1.lock().unwrap().agent_by_id(0).lock().unwrap().print_values(); // confirm agent created
+    
+    sp0.add_passive_connection(Connection1::new(
+        pp_a1.lock().unwrap().agent_by_id(0),
+        pp_a1.lock().unwrap().agent_by_id(2),
+        1
+    ));
 
-    
-    // pp_a1.lock().unwrap()
-    //     .agent_by_id(0)
-    //     .lock().unwrap()
-    //     .print_values();
-    
-    // let x = pp_a1.lock().unwrap().agent_by_id(0);
-    
-    // let pp_a1_1 = super_1.populations
-    //     .get(&name_pp_a1).unwrap()
-    //     .lock().unwrap()
-    //     .add_agent(AAgent::new(0, 0, Some(2)));
+    sp0.add_passive_connection(Connection1::new(
+        pp_a1.lock().unwrap().agent_by_id(1),
+        pp_a1.lock().unwrap().agent_by_id(2),
+        1
+    ));
 
-    
-    // super_1.add_agent(agent_a::Model::new(0, 0, Some(2)));
-    // super_1.add_agent(agent_a::Model::new(10, 0, Some(2)));
-    // super_1.add_agent(agent_a::Model::new(100, 0, None));
-    // let cn = Connection1::new(
-    //     // Arc::clone(&super_1.agents[0]),
-    //     // Arc::clone(&super_1.agents[2]),
-    //     Arc::clone(&(super_1.agent_by_id(0))),
-    //     Arc::clone(&(super_1.agent_by_id(2))),
-    //     1
-    // );
-
-    // this part is OK
-    
-    // let agnt_x = agent_a::Model::new(0, 0, Some(2));
-    // let agnt_y = agent_a::Model::new(10, 0, Some(2));
-    // let cn1 = Connection1::new(
-    //     Arc::clone(&agnt_x),
-    //     Arc::clone(&agnt_y),
-    //     1
-    // );
-
-    
-    // super_1.add_passive_connection(Connection1::new(
-    //     Arc::clone(&super_1.agents[0]),
-    //     Arc::clone(&super_1.agents[2]),
-    //     1
-    // ));
-    // super_1.add_passive_connection(Connection1::new(
-    //     Arc::clone(&super_1.agents[1]),
-    //     Arc::clone(&super_1.agents[2]),
-    //     2
-    // ));
+    sp0.run(20);
     
     // let (tx_report_x, rx_report_x) = mpsc::channel();
     // let (tx_report_y, rx_report_y) = mpsc::channel();

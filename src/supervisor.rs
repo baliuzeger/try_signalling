@@ -6,7 +6,6 @@ use std::thread;
 use std::collections::HashMap;
 use crate::agents::{AgentPopulation};
 use crate::signals::PassiveConnection;
-use crate::signals::signal_1::{Generate1, Process1, Connection1};
 
 pub struct Supervisor {
     pub populations: HashMap<String, Arc<Mutex<dyn AgentPopulation + Send>>>,
@@ -25,9 +24,15 @@ pub enum Broadcast {
 }
 
 impl Supervisor {
-    pub fn add_passive_connection<S, R>(&mut self, cn: Arc<Mutex<Connection1<S, R>>>)
-    where S: 'static + Generate1 + Send,
-          R: 'static + Process1 + Send
+    // pub fn add_passive_connection<S, R>(&mut self, cn: Arc<Mutex<Connection1<S, R>>>)
+    // where S: 'static + Generate1 + Send,
+    //       R: 'static + Process1 + Send
+    // {
+    //     self.passive_connections.push(cn);
+    // }
+
+    pub fn add_passive_connection<T>(&mut self, cn: Arc<Mutex<T>>)
+    where T: 'static + PassiveConnection + Send,
     {
         self.passive_connections.push(cn);
     }
