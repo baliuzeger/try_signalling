@@ -4,20 +4,14 @@ use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc};
 use std::thread;
 use std::collections::HashMap;
-use crate::agents::Agent;
+use crate::agents::{Agent, AgentPopulation};
 use crate::agents::agent_a::Model as AAgent;
 use crate::signals::PassiveConnection;
 use crate::signals::signal_1::{Generate1, Process1, Connection1};
 
 pub struct Supervisor {
-    populations: HashMap<String, Box<dyn Population>>,
-    // agent_population: HashMap<String, AgentClass>,
-    // pub agents: Vec<Arc<Mutex<dyn Agent + Send>>>,
+    populations: HashMap<String, Arc<Mutex<dyn AgentPopulation + Send>>>,
     pub passive_connections:Vec<Arc<Mutex<dyn PassiveConnection>>>,
-}
-
-enum AgentClass {
-    AgentA(Vec<Arc<Mutex<AAgent>>>),
 }
 
 pub struct RunningSet {
@@ -32,14 +26,6 @@ pub enum Broadcast {
 }
 
 impl Supervisor {
-    pub fn add_agent(&mut self, agnt: Arc<Mutex<dyn Agent + Send>>) {
-        self.agents.push(agnt);
-    }
-
-    pub fn agent_by_id(&self, n: usize) -> Arc<Mutex<dyn Agent + Send>> {
-        Arc::clone(&self.agents[n])
-    }
-    
     pub fn add_passive_connection<S, R>(&mut self, cn: Arc<Mutex<Connection1<S, R>>>)
     where S: 'static + Generate1 + Send,
           R: 'static + Process1 + Send
@@ -50,34 +36,34 @@ impl Supervisor {
     pub fn run(&self, total_steps: u32) {
         // this version make all connections (only passive supported) into threads controlled by pre-agents.
         let mut counter = 0;
-        let mut running_agents = Vec::new();
+        let mut running_populations = Vec::new();
 
-        for agnt in &self.agents {
-            let (tx_agnt_report, rx_agnt_report) = crossbeam_channel::bounded(1);
-            let (tx_agnt_confirm, rx_agnt_confirm) = crossbeam_channel::bounded(1);
-            let running_agnt = Arc::clone(agnt);
-            running_agents.push(RunningSet {
-                instance: thread::spawn(move || {running_agnt.lock().unwrap().run(rx_agnt_confirm, tx_agnt_report)}),
-                report: rx_agnt_report,
-                confirm: tx_agnt_confirm,
+        for (_, pp) in &self.populations {
+            let (tx_pp_report, rx_pp_report) = crossbeam_channel::bounded(1);
+            let (tx_pp_confirm, rx_pp_confirm) = crossbeam_channel::bounded(1);
+            let running_pp = Arc::clone(&pp);
+            running_populations.push(RunningSet {
+                instance: thread::spawn(move || {running_pp.lock().unwrap().run(rx_pp_confirm, tx_pp_report)}),
+                report: rx_pp_report,
+                confirm: tx_pp_confirm,
             });
         }
 
         loop {
             if counter >= total_steps {
-                for r_agnt in &running_agents {
-                    r_agnt.confirm.send(Broadcast::End).unwrap();
+                for r_pp in &running_populations {
+                    r_pp.confirm.send(Broadcast::End).unwrap();
                 }
-                for r_agnt in running_agents {
-                    r_agnt.instance.join().expect("agent join error!");
+                for r_pp in running_populations {
+                    r_pp.instance.join().expect("population join error!");
                 }
                 break;
             } else  {
-                for r_agnt in &running_agents {
-                    r_agnt.confirm.send(Broadcast::Continue).unwrap();
+                for r_pp in &running_populations {
+                    r_pp.confirm.send(Broadcast::Continue).unwrap();
                 }
-                for r_agnt in &running_agents {
-                    r_agnt.report.recv().unwrap();
+                for r_pp in &running_populations {
+                    r_pp.report.recv().unwrap();
                 }
                 counter += 1;
             }

@@ -12,21 +12,21 @@ use std::sync::{Arc};
 
 fn main() {
 
-    let mut super_1 = Supervisor {
-        agents: Vec::new(),
-        passive_connections: Vec::new(),
-    };
+    // let mut super_1 = Supervisor {
+    //     agents: Vec::new(),
+    //     passive_connections: Vec::new(),
+    // };
 
-    super_1.add_agent(agent_a::Model::new(0, 0, Some(2)));
-    super_1.add_agent(agent_a::Model::new(10, 0, Some(2)));
-    super_1.add_agent(agent_a::Model::new(100, 0, None));
-    let cn = Connection1::new(
-        // Arc::clone(&super_1.agents[0]),
-        // Arc::clone(&super_1.agents[2]),
-        Arc::clone(&(super_1.agent_by_id(0))),
-        Arc::clone(&(super_1.agent_by_id(2))),
-        1
-    );
+    // super_1.add_agent(agent_a::Model::new(0, 0, Some(2)));
+    // super_1.add_agent(agent_a::Model::new(10, 0, Some(2)));
+    // super_1.add_agent(agent_a::Model::new(100, 0, None));
+    // let cn = Connection1::new(
+    //     // Arc::clone(&super_1.agents[0]),
+    //     // Arc::clone(&super_1.agents[2]),
+    //     Arc::clone(&(super_1.agent_by_id(0))),
+    //     Arc::clone(&(super_1.agent_by_id(2))),
+    //     1
+    // );
 
     // this part is OK
     

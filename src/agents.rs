@@ -12,7 +12,9 @@ pub trait Agent {
     // fn enroll(&mut self);
 }
 
-pub trait Population {}
+pub trait AgentPopulation {
+    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>);
+}
 
 struct OutConnectionSet<T: Send, C> {
     connection: C,

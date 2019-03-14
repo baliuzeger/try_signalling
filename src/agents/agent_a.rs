@@ -8,11 +8,62 @@ use std::sync::{Mutex, Arc, Weak};
 // use crate::signals::PassiveConnection;
 use crate::signals::signal_1::{Generate1, Propagate1, Process1, PassivePropagate1};
 use crate::signals::signal_1::{Signal1Gen, Signal1Prop, Signal1Proc};
-use crate::agents::{Agent, OutConnectionSet, InConnectionSet, AgentEvent};
+use crate::agents::{Agent, AgentPopulation, OutConnectionSet, InConnectionSet, AgentEvent};
 // use crate::signals::signal_2::{Signal2, Generate2, Propagate2, Process2};
 
-pub Population {
+pub struct Population {
     agents: Vec<Arc<Mutex<Model>>>,
+}
+
+impl AgentPopulation for Population {
+    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>) {
+        // this version make all connections (only passive supported) into threads controlled by pre-agents.
+        let mut running_agents = Vec::new();
+
+        for agnt in &self.agents {
+            let (tx_agnt_report, rx_agnt_report) = crossbeam_channel::bounded(1);
+            let (tx_agnt_confirm, rx_agnt_confirm) = crossbeam_channel::bounded(1);
+            let running_agnt = Arc::clone(agnt);
+            running_agents.push(RunningSet {
+                instance: thread::spawn(move || {running_agnt.lock().unwrap().run(rx_agnt_confirm, tx_agnt_report)}),
+                report: rx_agnt_report,
+                confirm: tx_agnt_confirm,
+            });
+        }
+
+        loop {
+            match rx_confirm.recv().unwrap() {
+                Broadcast::End => {
+                    for r_agnt in &running_agents {
+                        r_agnt.confirm.send(Broadcast::End).unwrap();
+                    }
+                    for r_agnt in running_agents {
+                        r_agnt.instance.join().expect("connection join error!");
+                    }
+                    break;
+                },
+                Broadcast::Continue => {
+                    for r_agnt in &running_agents {
+                        r_agnt.confirm.send(Broadcast::Continue).unwrap();
+                    }
+                    for r_agnt in &running_agents {
+                        r_agnt.report.recv().unwrap();
+                    }
+                    tx_report.send(true).unwrap();
+                },
+            }
+        }
+    }
+}
+
+impl Population {
+    pub fn add_agent(&mut self, agnt: Arc<Mutex<Model>>) {
+        self.agents.push(agnt);
+    }
+
+    pub fn agent_by_id(&self, n: usize) -> Arc<Mutex<Model>> {
+        Arc::clone(&self.agents[n])
+    }
 }
 
 pub struct Model {
@@ -135,7 +186,7 @@ impl Model {
         for conn in &self.in_connections_1 {
             match conn.channel.try_recv() {
                 Ok(s) => self.buffer_1.push(self.process_1(s)),
-                Err(crossbeam_channel::TryRecvError::Disconnected) => panic!("Sender is gone!"), //should output connection & sender id.
+                Err(crossbeam_channel::TryRecvError::Disconnected) => panic!("Sender is gone!"),
                 Err(crossbeam_channel::TryRecvError::Empty) => (),
             }
         }
