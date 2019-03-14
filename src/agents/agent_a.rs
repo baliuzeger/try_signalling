@@ -137,6 +137,7 @@ impl Agent for Model {
         loop {
             match rx_confirm.recv().unwrap() {
                 Broadcast::End => {
+                    self.store_1();
                     for r_cn in &running_connections {
                         r_cn.confirm.send(Broadcast::End).unwrap();
                     }
@@ -146,6 +147,7 @@ impl Agent for Model {
                     break;
                 },
                 Broadcast::Continue => {
+                    // the slower agents may recv signals generated in the same cycle by others.
                     if let AgentEvent::Y = self.evolve() {
                         for r_cn in &running_connections {
                             r_cn.report.recv().unwrap();
@@ -202,7 +204,7 @@ impl Model {
             match conn.channel.try_recv() {
                 Ok(s) => {
                     println!(
-                        "received: gen: {}, prop: {}; self: gen {}, proc: {}.",
+                        "receiving: gen: {}, prop: {}; self: gen {}, proc: {}.",
                         s.msg_gen,
                         s.msg_prop,
                         self.gen_value,
