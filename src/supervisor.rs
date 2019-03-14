@@ -47,11 +47,12 @@ impl Supervisor {
         // this version make all connections (only passive supported) into threads controlled by pre-agents.
         let mut counter = 0;
         let mut running_populations = Vec::new();
-
+        println!("start making threads for populations.");
         for (_, pp) in &self.populations {
             let (tx_pp_report, rx_pp_report) = crossbeam_channel::bounded(1);
             let (tx_pp_confirm, rx_pp_confirm) = crossbeam_channel::bounded(1);
             let running_pp = Arc::clone(&pp);
+            println!("making threads for populations.");
             running_populations.push(RunningSet {
                 instance: thread::spawn(move || {running_pp.lock().unwrap().run(rx_pp_confirm, tx_pp_report)}),
                 report: rx_pp_report,
@@ -69,6 +70,7 @@ impl Supervisor {
                 }
                 break;
             } else  {
+                println!("count: {}.", counter);
                 for r_pp in &running_populations {
                     r_pp.confirm.send(Broadcast::Continue).unwrap();
                 }

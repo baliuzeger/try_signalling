@@ -175,15 +175,23 @@ impl Model {
     fn evolve(&mut self) -> AgentEvent {
         self.store_1();
         self.proc_value += 1;
+        self.gen_value += 1;
         match self.event_cond {
-            None => AgentEvent::N,
+            None => {
+                println!("agnet a go on. gen: {}, proc: {}.",  self.gen_value, self.proc_value);
+                AgentEvent::N   
+            },
             Some(n) => {
                 match self.proc_value % n {
                     0 => {
+                        println!("agnet a fire. gen: {}, proc: {}.",  self.gen_value, self.proc_value);
                         self.send_count();
                         AgentEvent::Y
                     },
-                    _ => AgentEvent::N,
+                    _ => {
+                        println!("agnet a go on. gen: {}, proc: {}.",  self.gen_value, self.proc_value);
+                        AgentEvent::N
+                    },
                 }
             }
         }
@@ -192,7 +200,16 @@ impl Model {
     fn store_1(&mut self) {
         for conn in &self.in_connections_1 {
             match conn.channel.try_recv() {
-                Ok(s) => self.buffer_1.push(self.process_1(s)),
+                Ok(s) => {
+                    println!(
+                        "received: gen: {}, prop: {}; self: gen {}, proc: {}.",
+                        s.msg_gen,
+                        s.msg_prop,
+                        self.gen_value,
+                        self.proc_value
+                    );
+                    self.buffer_1.push(self.process_1(s))
+                },
                 Err(crossbeam_channel::TryRecvError::Disconnected) => panic!("Sender is gone!"),
                 Err(crossbeam_channel::TryRecvError::Empty) => (),
             }
@@ -203,15 +220,22 @@ impl Model {
         for conn in &self.out_connections_1 {
             conn.channel.send(self.generate_1()).unwrap();
         }
-        self.gen_value += 1;
+        // self.gen_value += 1;
     }
 
     pub fn print_values(&self) {
         println!("gen: {}, proc: {}.", self.gen_value, self.proc_value);
     }
     
-    // pub fn show_1(&self) -> Vec<(i32, i32, i32)> {
-    //     self.buffer_1.iter().collect()
-    // }
+    pub fn show_1(&self) {
+        for msg in &self.buffer_1 {
+            println!(
+                "received: gen: {}, prop: {}, proc: {}.",
+                msg.msg_gen,
+                msg.msg_prop,
+                msg.msg_proc
+            )
+        }
+    }
     
 }
