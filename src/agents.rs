@@ -1,4 +1,4 @@
-//use std::sync::{Mutex, Weak};
+use std::sync::{Arc, Mutex};
 extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
@@ -16,16 +16,19 @@ pub trait AgentPopulation {
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>);
 }
 
+#[derive(Debug)]
 struct OutConnectionSet<T: Send, C> {
     connection: C,
     channel: CCSender<T>,
 }
 
+#[derive(Debug)]
 struct InConnectionSet<T: Send, C> {
     connection: C,
     channel: CCReceiver<T>,
 }
 
+#[derive(Debug)]
 pub enum AgentEvent {
     Y,
     N,

@@ -5,42 +5,50 @@ use std::sync::{Mutex, Arc, Weak};
 use crate::signals::{InAgentSet, OutAgentSet, PassiveConnection};
 use crate::supervisor::Broadcast;
 
+#[derive(Debug)]
 pub struct Signal1Gen {
     pub msg_gen: i32
 }
 
+#[derive(Debug)]
 pub struct Signal1Prop {
     pub msg_gen: i32,
     pub msg_prop: i32,
 }
 
+#[derive(Debug)]
 pub struct Signal1Proc {
     pub msg_gen: i32,
     pub msg_prop: i32,
     pub msg_proc: i32,
 }
 
+#[derive(Debug)]
 pub trait Generate1 {
     fn generate_1 (&self) -> Signal1Gen;
     fn add_out_1<T: 'static + PassivePropagate1 + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCSender<Signal1Gen>);
 }
 
+#[derive(Debug)]
 pub trait Propagate1 {
     fn refine(&self, s: Signal1Gen) -> Signal1Prop;
     fn propagate(&self, s: Signal1Prop);
 }
 
+#[derive(Debug)]
 pub trait Process1 {
     fn process_1(&self, s: Signal1Prop) -> Signal1Proc;
     fn add_in_1<T: 'static + Propagate1 + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCReceiver<Signal1Prop>);
 }
 
+#[derive(Debug)]
 pub struct Connection1<S: Generate1 + Send, R: Process1 + Send> {
     in_agent: InAgentSet<Signal1Gen, S>,
     out_agent: OutAgentSet<Signal1Prop, R>,
     value: i32,
 }
 
+#[derive(Debug)]
 pub trait  PassivePropagate1: PassiveConnection + Propagate1 {}
 
 impl<S: Generate1 + Send, R: Process1 + Send> PassivePropagate1 for Connection1<S, R> {}

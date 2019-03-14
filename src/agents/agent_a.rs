@@ -57,10 +57,17 @@ impl AgentPopulation for Population {
 }
 
 impl Population {
+    pub fn new() -> Arc<Mutex<Population>> {
+        Arc::new(Mutex::new(Population{
+            agents: Vec::new(),
+        }))
+    }
+
     pub fn add_agent(&mut self, agnt: Arc<Mutex<Model>>) {
         self.agents.push(agnt);
     }
 
+    
     pub fn agent_by_id(&self, n: usize) -> Arc<Mutex<Model>> {
         Arc::clone(&self.agents[n])
     }
@@ -197,6 +204,10 @@ impl Model {
             conn.channel.send(self.generate_1()).unwrap();
         }
         self.gen_value += 1;
+    }
+
+    pub fn print_values(&self) {
+        println!("gen: {}, proc: {}.", self.gen_value, self.proc_value);
     }
     
     // pub fn show_1(&self) -> Vec<(i32, i32, i32)> {

@@ -15,11 +15,13 @@ pub trait ActiveConnection {
     fn evolve(&self);
 }
 
+#[derive(Debug)]
 pub struct InAgentSet<T: Send, A: Send> {
     agent: Arc<Mutex<A>>,
     channel: CCReceiver<T>,
 }
 
+#[derive(Debug)]
 pub struct OutAgentSet<T: Send, A: Send> {
     agent: Arc<Mutex<A>>,
     channel: CCSender<T>,

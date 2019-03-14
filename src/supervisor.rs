@@ -4,13 +4,12 @@ use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc};
 use std::thread;
 use std::collections::HashMap;
-use crate::agents::{Agent, AgentPopulation};
-use crate::agents::agent_a::Model as AAgent;
+use crate::agents::{AgentPopulation};
 use crate::signals::PassiveConnection;
 use crate::signals::signal_1::{Generate1, Process1, Connection1};
 
 pub struct Supervisor {
-    populations: HashMap<String, Arc<Mutex<dyn AgentPopulation + Send>>>,
+    pub populations: HashMap<String, Arc<Mutex<dyn AgentPopulation + Send>>>,
     pub passive_connections:Vec<Arc<Mutex<dyn PassiveConnection>>>,
 }
 
@@ -33,6 +32,12 @@ impl Supervisor {
         self.passive_connections.push(cn);
     }
 
+    pub fn add_population<T>(&mut self, key: String, pp: Arc<Mutex<T>>)
+    where T: 'static + AgentPopulation + Send
+    {
+        self.populations.insert(key, pp);
+    }
+    
     pub fn run(&self, total_steps: u32) {
         // this version make all connections (only passive supported) into threads controlled by pre-agents.
         let mut counter = 0;

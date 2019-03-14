@@ -1,22 +1,49 @@
 // use std::rc::{Rc};
 // use std::cell::RefCell;
-use try_signalling::agents::agent_a;
 use try_signalling::signals::signal_1::Connection1;
 use try_signalling::supervisor::{Supervisor};
+use try_signalling::agents::agent_a::Model as AAgent;
+use try_signalling::agents::agent_a::Population as APopulation;
 // use try_signalling::signals::signal_2::Channel2;
 // use std::thread;
 // use std::time::Duration;
 // extern crate crossbeam_channel;
 // use std::time::Duration;
-use std::sync::{Arc};
+use std::sync::Arc;
+use std::collections::HashMap;
 
 fn main() {
 
-    // let mut super_1 = Supervisor {
-    //     agents: Vec::new(),
-    //     passive_connections: Vec::new(),
-    // };
+    let mut super_1 = Supervisor {
+        populations: HashMap::new(),
+        passive_connections: Vec::new(),
+    };
 
+    let name_pp_a1 = String::from("a#1");
+
+    let pp_a1 = APopulation::new(); // why I don't use mut and passed?
+
+    super_1.add_population(
+        name_pp_a1.clone(),
+        Arc::clone(&pp_a1)
+    );
+
+    pp_a1.lock().unwrap().add_agent(AAgent::new(0, 10, Some(2)));
+
+    
+    // pp_a1.lock().unwrap()
+    //     .agent_by_id(0)
+    //     .lock().unwrap()
+    //     .print_values();
+    
+    // let x = pp_a1.lock().unwrap().agent_by_id(0);
+    
+    // let pp_a1_1 = super_1.populations
+    //     .get(&name_pp_a1).unwrap()
+    //     .lock().unwrap()
+    //     .add_agent(AAgent::new(0, 0, Some(2)));
+
+    
     // super_1.add_agent(agent_a::Model::new(0, 0, Some(2)));
     // super_1.add_agent(agent_a::Model::new(10, 0, Some(2)));
     // super_1.add_agent(agent_a::Model::new(100, 0, None));
