@@ -3,13 +3,21 @@ use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc};
 use std::thread;
+use std::collections::HashMap;
 use crate::agents::Agent;
+use crate::agents::agent_a::Model as AAgent;
 use crate::signals::PassiveConnection;
 use crate::signals::signal_1::{Generate1, Process1, Connection1};
 
 pub struct Supervisor {
-    pub agents: Vec<Arc<Mutex<dyn Agent + Send>>>,
+    populations: HashMap<String, Box<dyn Population>>,
+    // agent_population: HashMap<String, AgentClass>,
+    // pub agents: Vec<Arc<Mutex<dyn Agent + Send>>>,
     pub passive_connections:Vec<Arc<Mutex<dyn PassiveConnection>>>,
+}
+
+enum AgentClass {
+    AgentA(Vec<Arc<Mutex<AAgent>>>),
 }
 
 pub struct RunningSet {

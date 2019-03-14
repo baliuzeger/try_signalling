@@ -12,6 +12,8 @@ pub trait Agent {
     // fn enroll(&mut self);
 }
 
+pub trait Population {}
+
 struct OutConnectionSet<T: Send, C> {
     connection: C,
     channel: CCSender<T>,

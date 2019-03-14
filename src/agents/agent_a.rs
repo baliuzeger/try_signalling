@@ -11,6 +11,10 @@ use crate::signals::signal_1::{Signal1Gen, Signal1Prop, Signal1Proc};
 use crate::agents::{Agent, OutConnectionSet, InConnectionSet, AgentEvent};
 // use crate::signals::signal_2::{Signal2, Generate2, Propagate2, Process2};
 
+pub Population {
+    agents: Vec<Arc<Mutex<Model>>>,
+}
+
 pub struct Model {
     gen_value: i32,
     proc_value: i32,
