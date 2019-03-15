@@ -39,7 +39,7 @@ pub trait Process1 {
     fn add_in_1<T: 'static + Propagate1 + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCReceiver<Signal1Prop>);
 }
 
-pub struct Connection1<S: Generate1 + Send, R: Process1 + Send> {
+pub struct Connection<S: Generate1 + Send, R: Process1 + Send> {
     in_agent: InAgentSet<Signal1Gen, S>,
     out_agent: OutAgentSet<Signal1Prop, R>,
     value: i32,
@@ -47,9 +47,9 @@ pub struct Connection1<S: Generate1 + Send, R: Process1 + Send> {
 
 pub trait  PassivePropagate1: PassiveConnection + Propagate1 {}
 
-impl<S: Generate1 + Send, R: Process1 + Send> PassivePropagate1 for Connection1<S, R> {}
+impl<S: Generate1 + Send, R: Process1 + Send> PassivePropagate1 for Connection<S, R> {}
 
-impl<S: Generate1 + Send, R: Process1 + Send> Propagate1 for Connection1<S, R> {
+impl<S: Generate1 + Send, R: Process1 + Send> Propagate1 for Connection<S, R> {
     fn refine(&self, s: Signal1Gen) -> Signal1Prop {
         Signal1Prop {
             msg_gen: s.msg_gen,
@@ -62,7 +62,7 @@ impl<S: Generate1 + Send, R: Process1 + Send> Propagate1 for Connection1<S, R> {
     }
 }
 
-impl<S: Generate1 + Send, R: Process1 + Send> PassiveConnection for Connection1<S, R> {
+impl<S: Generate1 + Send, R: Process1 + Send> PassiveConnection for Connection<S, R> {
     fn run_under_agent(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>){
         loop {
             random_sleep();
@@ -80,15 +80,15 @@ impl<S: Generate1 + Send, R: Process1 + Send> PassiveConnection for Connection1<
     }
 }
 
-impl<S: Generate1 + Send, R: Process1 + Send> Connection1<S, R> {
-    pub fn new(s: Arc<Mutex<S>>, r: Arc<Mutex<R>>, value: i32) -> Arc<Mutex<Connection1<S, R>>>
+impl<S: Generate1 + Send, R: Process1 + Send> Connection<S, R> {
+    pub fn new(s: Arc<Mutex<S>>, r: Arc<Mutex<R>>, value: i32) -> Arc<Mutex<Connection<S, R>>>
     where S:'static + Generate1 + Send,
           R:'static + Process1 + Send
     {
         let (tx_pre, rx_pre) = crossbeam_channel::bounded::<Signal1Gen>(1);
         let (tx_post, rx_post) = crossbeam_channel::bounded::<Signal1Prop>(1);
         let conn = Arc::new(Mutex::new(
-            Connection1 {
+            Connection {
                 in_agent: InAgentSet {
                     agent: Arc::clone(&s),
                     channel: rx_pre,

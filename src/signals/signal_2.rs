@@ -1,63 +1,118 @@
-/// should impl copy trait on Signal for use in agent.generate
-// use crate::agents;
-// use std::rc::{Rc, Weak};
-// use std::cell::RefCell;
 extern crate crossbeam_channel;
-// use std::time::Duration;
+use crossbeam_channel::Receiver as CCReceiver;
+use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc, Weak};
+use crate::signals::{InAgentSet, OutAgentSet, PassiveConnection};
+use crate::supervisor::Broadcast;
+use crate::random_sleep;
 
-pub struct Signal2 {
-    pub message: i32,
+#[derive(Debug)]
+pub struct Signal2Gen {
+    pub msg_gen: i32
 }
 
-pub trait Propagate2 {
-    fn refine(&self, s: Signal2) -> Signal2;
-    fn propagate(&self, s: Signal2);
+#[derive(Debug)]
+pub struct Signal2Prop {
+    pub msg_gen: i32,
+    pub msg_prop: i32,
 }
 
-pub trait Process2 {
-    fn process_2(&self, s: Signal2);
-    fn add_in_2<C:'static + Propagate2 + Send> (&mut self, ch: Arc<Mutex<C>>);
+#[derive(Debug)]
+pub struct Signal2Proc {
+    pub msg_gen: i32,
+    pub msg_prop: i32,
+    pub msg_proc: i32,
 }
 
 pub trait Generate2 {
-    fn generate_2 (&self) -> Signal2;
-    fn add_out_2<C:'static + Propagate2 + Send> (&mut self, ch: Arc<Mutex<C>>);
+    fn generate_2 (&self) -> Signal2Gen;
+    fn add_out_2<T: 'static + PassivePropagate2 + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCSender<Signal2Gen>);
 }
 
-pub struct Channel2<S: Generate2, R: Process2> {
-    sender: Weak<Mutex<S>>,
-    receiver: Weak<Mutex<R>>,
+pub trait Propagate2 {
+    fn refine(&self, s: Signal2Gen) -> Signal2Prop;
+    fn propagate(&self, s: Signal2Prop);
+}
+
+pub trait Process2 {
+    fn process_2(&self, s: Signal2Prop) -> Signal2Proc;
+    fn add_in_2<T: 'static + Propagate2 + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCReceiver<Signal2Prop>);
+}
+
+pub struct Connection<S: Generate2 + Send, R: Process2 + Send> {
+    in_agent: InAgentSet<Signal2Gen, S>,
+    out_agent: OutAgentSet<Signal2Prop, R>,
     value: i32,
 }
 
-impl<S: Generate2, R: Process2> Propagate2 for Channel2<S, R> {
-    fn refine(&self, s: Signal2) -> Signal2 {
-        Signal2 {
-            message: self.value + s.message,
+pub trait  PassivePropagate2: PassiveConnection + Propagate2 {}
+
+impl<S: Generate2 + Send, R: Process2 + Send> PassivePropagate2 for Connection<S, R> {}
+
+impl<S: Generate2 + Send, R: Process2 + Send> Propagate2 for Connection<S, R> {
+    fn refine(&self, s: Signal2Gen) -> Signal2Prop {
+        Signal2Prop {
+            msg_gen: s.msg_gen,
+            msg_prop: self.value,
         }
     }
     
-    fn propagate(&self, s: Signal2) {
-        self.receiver.upgrade().unwrap().lock().unwrap().process_2(self.refine(s));
+    fn propagate(&self, s: Signal2Prop) {
+        self.out_agent.channel.send(s).unwrap();
     }
 }
 
-impl<S, R> Channel2<S, R>
-where S:'static + Generate2 + Send,
-      R:'static + Process2 + Send
+impl<S: Generate2 + Send, R: Process2 + Send> PassiveConnection for Connection<S, R> {
+    fn run_under_agent(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>){
+        loop {
+            random_sleep();
+            match rx_confirm.recv().unwrap() {
+                Broadcast::Exit => break,
+                Broadcast::NewCycle => panic!("agent confirm by NewCycle!"),
+                Broadcast::FinishCycle => {
+                    // println!("conn wait recv signal.");
+                    self.propagate(self.refine(self.in_agent.channel.recv().unwrap()));
+                    // println!("conn got & propagated signal.");
+                    tx_report.send(true).unwrap();
+                }
+            }
+        }
+    }
+}
 
-{
-    pub fn new(s: Arc<Mutex<S>>, r: Arc<Mutex<R>>) -> Arc<Mutex<Channel2<S, R>>> {
-        let ch = Arc::new(Mutex::new(
-            Channel2 {
-                sender: Arc::downgrade(&s),
-                receiver: Arc::downgrade(&r),
-                value: 20,
+impl<S: Generate2 + Send, R: Process2 + Send> Connection<S, R> {
+    pub fn new(s: Arc<Mutex<S>>, r: Arc<Mutex<R>>, value: i32) -> Arc<Mutex<Connection<S, R>>>
+    where S:'static + Generate2 + Send,
+          R:'static + Process2 + Send
+    {
+        let (tx_pre, rx_pre) = crossbeam_channel::bounded::<Signal2Gen>(1);
+        let (tx_post, rx_post) = crossbeam_channel::bounded::<Signal2Prop>(1);
+        let conn = Arc::new(Mutex::new(
+            Connection {
+                in_agent: InAgentSet {
+                    agent: Arc::clone(&s),
+                    channel: rx_pre,
+                },
+                out_agent: OutAgentSet {
+                    agent: Arc::clone(&r),
+                    channel: tx_post,
+                },
+                value,
             }
         ));
-        s.lock().unwrap().add_out_2(Arc::clone(&ch));
-        r.lock().unwrap().add_in_2(Arc::clone(&ch));
-        ch
+        (*s.lock().unwrap()).add_out_2(Arc::downgrade(&conn), tx_pre);
+        (*r.lock().unwrap()).add_in_2(Arc::downgrade(&conn), rx_post);
+        conn
+    }
+
+    fn _standby(&self) -> bool {
+        match self.in_agent.channel.try_recv() {
+            Ok(s) => {
+                self.propagate(self.refine(s));
+                true
+            },
+            Err(crossbeam_channel::TryRecvError::Disconnected) => panic!("Sender is gone!"), //should output connection & sender id.
+            Err(crossbeam_channel::TryRecvError::Empty) => false,
+        }
     }
 }

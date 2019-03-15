@@ -5,7 +5,7 @@ use crossbeam_channel::Sender as CCSender;
 use std::sync::{Arc, Mutex};
 use crate::supervisor::Broadcast;
 pub mod signal_1;
-// pub mod signal_2;
+pub mod signal_2;
 
 pub trait PassiveConnection {
     fn run_under_agent(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>);
