@@ -5,6 +5,7 @@ use crossbeam_channel::Sender as CCSender;
 use crate::supervisor::Broadcast;
 
 pub mod agent_a;
+pub mod agent_b;
 
 pub trait Agent {
     // fn evolve(&mut self) -> AgentEvent;
