@@ -4,7 +4,7 @@ use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc};
 use std::thread;
 use std::collections::HashMap;
-use crate::agents::{AgentPopulation};
+use crate::agents::{AgentPopulation, AgentEvent};
 use crate::signals::PassiveConnection;
 
 pub struct Supervisor {
@@ -12,15 +12,16 @@ pub struct Supervisor {
     pub passive_connections:Vec<Arc<Mutex<dyn PassiveConnection>>>,
 }
 
-pub struct RunningSet {
+pub struct RunningSet<T> {
     pub instance: thread::JoinHandle<()>,
-    pub report: CCReceiver<bool>,
+    pub report: CCReceiver<T>,
     pub confirm: CCSender<Broadcast>,
 }
 
 pub enum Broadcast {
-    Continue,
-    End,
+    NewCycle,
+    FinishCycle,
+    Exit,
 }
 
 impl Supervisor {
@@ -60,10 +61,11 @@ impl Supervisor {
             });
         }
 
+        let mut populations_with_event = Vec::new();
         loop {
             if counter >= total_steps {
                 for r_pp in &running_populations {
-                    r_pp.confirm.send(Broadcast::End).unwrap();
+                    r_pp.confirm.send(Broadcast::Exit).unwrap();
                 }
                 for r_pp in running_populations {
                     r_pp.instance.join().expect("population join error!");
@@ -71,12 +73,24 @@ impl Supervisor {
                 break;
             } else  {
                 println!("count: {}.", counter);
+                populations_with_event.clear();
                 for r_pp in &running_populations {
-                    r_pp.confirm.send(Broadcast::Continue).unwrap();
+                    r_pp.confirm.send(Broadcast::NewCycle).unwrap();
                 }
                 for r_pp in &running_populations {
-                    r_pp.report.recv().unwrap();
+                    if let AgentEvent::Y = r_pp.report.recv().unwrap() {
+                        populations_with_event.push((r_pp.confirm.clone(), r_pp.report.clone()));
+                    }
                 }
+                for pp_e in &populations_with_event {
+                    pp_e.0.send(Broadcast::FinishCycle).unwrap();
+                }
+                for pp_e in &populations_with_event {
+                    match pp_e.1.recv().unwrap() {
+                        AgentEvent::N => (),
+                        AgentEvent::Y => panic!("pp report Event after FinishCycle!")
+                    }
+                }                
                 counter += 1;
             }
         }

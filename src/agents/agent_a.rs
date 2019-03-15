@@ -16,7 +16,7 @@ pub struct Population {
 }
 
 impl AgentPopulation for Population {
-    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>) {
+    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<AgentEvent>) {
         // this version make all connections (only passive supported) into threads controlled by pre-agents.
         let mut running_agents = Vec::new();
 
@@ -31,26 +31,54 @@ impl AgentPopulation for Population {
             });
         }
 
+        let mut agents_with_event = Vec::new();
         loop {
             match rx_confirm.recv().unwrap() {
-                Broadcast::End => {
+
+                Broadcast::Exit => {
                     for r_agnt in &running_agents {
-                        r_agnt.confirm.send(Broadcast::End).unwrap();
+                        r_agnt.confirm.send(Broadcast::Exit).unwrap();
                     }
                     for r_agnt in running_agents {
                         r_agnt.instance.join().expect("connection join error!");
                     }
                     break;
                 },
-                Broadcast::Continue => {
+
+                Broadcast::NewCycle => {
+                    agents_with_event.clear();
                     for r_agnt in &running_agents {
-                        r_agnt.confirm.send(Broadcast::Continue).unwrap();
+                        r_agnt.confirm.send(Broadcast::NewCycle).unwrap();
                     }
                     for r_agnt in &running_agents {
-                        r_agnt.report.recv().unwrap();
+                        if let AgentEvent::Y = r_agnt.report.recv().unwrap() {
+                            agents_with_event.push((r_agnt.confirm.clone(), r_agnt.report.clone()));
+                        }
                     }
-                    tx_report.send(true).unwrap();
+
+                    match agents_with_event.len() {
+                        0 => tx_report.send(AgentEvent::N).unwrap(),
+                        _ => {
+                            tx_report.send(AgentEvent::Y).unwrap();
+                            match rx_confirm.recv().unwrap() {
+                                Broadcast::FinishCycle => {
+                                    for agnt_e in &agents_with_event {
+                                        agnt_e.0.send(Broadcast::FinishCycle).unwrap();
+                                    }
+                                    for agnt_e in &agents_with_event {
+                                        match agnt_e.1.recv().unwrap() {
+                                            AgentEvent::N => (),
+                                            AgentEvent::Y => panic!("agnt report Event after FinishCycle!")
+                                        }
+                                    }
+                                },
+                                _ => panic!("sp not confirm by FinishCycle before finish cycle!"),
+                            }
+                        }
+                    }
                 },
+
+                _ => panic!("pp should only recv confirm of NewCycle or Exit!")
             }
         }
     }
@@ -118,7 +146,7 @@ impl Generate1 for Model {
 }
 
 impl Agent for Model {
-    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>) {
+    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<AgentEvent>) {
         let mut running_connections = Vec::new();
 
         for conn in &self.out_connections_1 {
@@ -136,25 +164,40 @@ impl Agent for Model {
 
         loop {
             match rx_confirm.recv().unwrap() {
-                Broadcast::End => {
+
+                Broadcast::Exit => {
                     self.store_1();
                     for r_cn in &running_connections {
-                        r_cn.confirm.send(Broadcast::End).unwrap();
+                        r_cn.confirm.send(Broadcast::Exit).unwrap();
                     }
                     for r_cn in running_connections {
                         r_cn.instance.join().expect("connection join error!");
                     }
                     break;
                 },
-                Broadcast::Continue => {
-                    // the slower agents may recv signals generated in the same cycle by others.
-                    if let AgentEvent::Y = self.evolve() {
-                        for r_cn in &running_connections {
-                            r_cn.report.recv().unwrap();
-                        }                                    
+
+                Broadcast::NewCycle => {
+                    match self.evolve() {
+                        AgentEvent::N => tx_report.send(AgentEvent::N).unwrap(),
+                        AgentEvent::Y => {
+                            tx_report.send(AgentEvent::Y).unwrap();
+                            match rx_confirm.recv().unwrap() {
+                                Broadcast::FinishCycle => {
+                                    for r_cn in &running_connections {
+                                        r_cn.confirm.send(Broadcast::FinishCycle).unwrap();
+                                    }
+                                    for r_cn in &running_connections {
+                                        r_cn.report.recv().unwrap();
+                                    }
+                                    tx_report.send(AgentEvent::N).unwrap();
+                                },
+                                _ => panic!("sp not confirm by FinishCycle before finish cycle!"),
+                            }
+                        }
                     }
-                    tx_report.send(true).unwrap();
                 },
+
+                _ => panic!("agent should only get Exit or NewCycle at beginning of cycle!")
             }
         }
     }

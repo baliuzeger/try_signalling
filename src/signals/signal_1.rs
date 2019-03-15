@@ -64,18 +64,13 @@ impl<S: Generate1 + Send, R: Process1 + Send> Propagate1 for Connection1<S, R> {
 impl<S: Generate1 + Send, R: Process1 + Send> PassiveConnection for Connection1<S, R> {
     fn run_under_agent(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>){
         loop {
-            match rx_confirm.try_recv() {
-                Ok(s) => {
-                    match s {
-                        Broadcast::End => break,
-                        Broadcast::Continue => panic!("connection shouldn't get Continue!"),
-                    }
-                },
-                Err(crossbeam_channel::TryRecvError::Disconnected) => panic!("Sender is gone!"),
-                Err(crossbeam_channel::TryRecvError::Empty) => {
-                    if self.standby() {
-                        tx_report.send(true).unwrap();                                                                                          }
-                },
+            match rx_confirm.recv().unwrap() {
+                Broadcast::Exit => break,
+                Broadcast::NewCycle => panic!("agent confirm by NewCycle!"),
+                Broadcast::FinishCycle => {
+                    self.propagate(self.refine(self.in_agent.channel.recv().unwrap()));
+                    tx_report.send(true).unwrap();
+                }
             }
         }
     }
@@ -106,7 +101,7 @@ impl<S: Generate1 + Send, R: Process1 + Send> Connection1<S, R> {
         conn
     }
 
-    fn standby(&self) -> bool {
+    fn _standby(&self) -> bool {
         match self.in_agent.channel.try_recv() {
             Ok(s) => {
                 self.propagate(self.refine(s));

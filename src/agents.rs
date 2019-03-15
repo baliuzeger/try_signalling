@@ -8,12 +8,12 @@ pub mod agent_a;
 
 pub trait Agent {
     // fn evolve(&mut self) -> AgentEvent;
-    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>);
+    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<AgentEvent>);
     // fn enroll(&mut self);
 }
 
 pub trait AgentPopulation {
-    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>);
+    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<AgentEvent>);
 }
 
 #[derive(Debug)]
