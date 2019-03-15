@@ -6,6 +6,7 @@ use std::thread;
 use std::collections::HashMap;
 use crate::agents::{AgentPopulation, AgentEvent};
 use crate::signals::PassiveConnection;
+use crate::random_sleep;
 
 pub struct Supervisor {
     pub populations: HashMap<String, Arc<Mutex<dyn AgentPopulation + Send>>>,
@@ -48,12 +49,12 @@ impl Supervisor {
         // this version make all connections (only passive supported) into threads controlled by pre-agents.
         let mut counter = 0;
         let mut running_populations = Vec::new();
-        println!("start making threads for populations.");
+        // println!("start making threads for populations.");
         for (_, pp) in &self.populations {
             let (tx_pp_report, rx_pp_report) = crossbeam_channel::bounded(1);
             let (tx_pp_confirm, rx_pp_confirm) = crossbeam_channel::bounded(1);
             let running_pp = Arc::clone(&pp);
-            println!("making threads for populations.");
+            // println!("making threads for populations.");
             running_populations.push(RunningSet {
                 instance: thread::spawn(move || {running_pp.lock().unwrap().run(rx_pp_confirm, tx_pp_report)}),
                 report: rx_pp_report,
@@ -72,7 +73,8 @@ impl Supervisor {
                 }
                 break;
             } else  {
-                println!("count: {}.", counter);
+                random_sleep();
+                // println!("count: {}.", counter);
                 populations_with_event.clear();
                 for r_pp in &running_populations {
                     r_pp.confirm.send(Broadcast::NewCycle).unwrap();
@@ -85,12 +87,14 @@ impl Supervisor {
                 for pp_e in &populations_with_event {
                     pp_e.0.send(Broadcast::FinishCycle).unwrap();
                 }
+                // println!("sp waiting pp FinishCycle.");
                 for pp_e in &populations_with_event {
                     match pp_e.1.recv().unwrap() {
                         AgentEvent::N => (),
                         AgentEvent::Y => panic!("pp report Event after FinishCycle!")
                     }
-                }                
+                }
+                // println!("sp get pp report FinishCycle.");
                 counter += 1;
             }
         }

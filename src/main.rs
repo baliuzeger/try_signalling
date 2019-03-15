@@ -48,7 +48,7 @@ fn main() {
     //     1
     // ));
     
-    sp0.run(10);
+    sp0.run(30);
     pp_a1.lock().unwrap()
         .agent_by_id(2)
         .lock().unwrap()

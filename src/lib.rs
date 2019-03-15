@@ -1,4 +1,6 @@
-
+use std::thread;
+use std::time::Duration;
+use rand::Rng;
 
 
 #[cfg(test)]
@@ -22,3 +24,7 @@ mod tests {
 pub mod agents;
 pub mod signals;
 pub mod supervisor;
+
+fn random_sleep() {
+    thread::sleep(Duration::from_millis(rand::thread_rng().gen_range(1, 101)));
+}

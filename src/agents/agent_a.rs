@@ -9,6 +9,7 @@ use std::sync::{Mutex, Arc, Weak};
 use crate::signals::signal_1::{Generate1, Propagate1, Process1, PassivePropagate1};
 use crate::signals::signal_1::{Signal1Gen, Signal1Prop, Signal1Proc};
 use crate::agents::{Agent, AgentPopulation, OutConnectionSet, InConnectionSet, AgentEvent};
+use crate::random_sleep;
 // use crate::signals::signal_2::{Signal2, Generate2, Propagate2, Process2};
 
 pub struct Population {
@@ -33,6 +34,7 @@ impl AgentPopulation for Population {
 
         let mut agents_with_event = Vec::new();
         loop {
+            random_sleep();
             match rx_confirm.recv().unwrap() {
 
                 Broadcast::Exit => {
@@ -59,21 +61,26 @@ impl AgentPopulation for Population {
                     match agents_with_event.len() {
                         0 => tx_report.send(AgentEvent::N).unwrap(),
                         _ => {
+                            random_sleep();
                             tx_report.send(AgentEvent::Y).unwrap();
+                            // println!("pp waiting sp confirm to Finishcycle.");
                             match rx_confirm.recv().unwrap() {
                                 Broadcast::FinishCycle => {
                                     for agnt_e in &agents_with_event {
                                         agnt_e.0.send(Broadcast::FinishCycle).unwrap();
                                     }
+                                    // println!("pp waiting agnt report FinishCycle.");
                                     for agnt_e in &agents_with_event {
                                         match agnt_e.1.recv().unwrap() {
                                             AgentEvent::N => (),
                                             AgentEvent::Y => panic!("agnt report Event after FinishCycle!")
                                         }
                                     }
+                                    // println!("pp get report from agnt of FinishCycle.")
                                 },
                                 _ => panic!("sp not confirm by FinishCycle before finish cycle!"),
                             }
+                            tx_report.send(AgentEvent::N).unwrap();
                         }
                     }
                 },
@@ -163,6 +170,7 @@ impl Agent for Model {
         }
 
         loop {
+            random_sleep();
             match rx_confirm.recv().unwrap() {
 
                 Broadcast::Exit => {
@@ -180,15 +188,19 @@ impl Agent for Model {
                     match self.evolve() {
                         AgentEvent::N => tx_report.send(AgentEvent::N).unwrap(),
                         AgentEvent::Y => {
+                            random_sleep();
                             tx_report.send(AgentEvent::Y).unwrap();
+                            // println!("agnt waiting pp confirm FinishCycle.");
                             match rx_confirm.recv().unwrap() {
                                 Broadcast::FinishCycle => {
                                     for r_cn in &running_connections {
                                         r_cn.confirm.send(Broadcast::FinishCycle).unwrap();
                                     }
+                                    // println!("agnt waiting conn report finish Prop.");
                                     for r_cn in &running_connections {
                                         r_cn.report.recv().unwrap();
                                     }
+                                    // println!("agnt get conn report finish Prop.");
                                     tx_report.send(AgentEvent::N).unwrap();
                                 },
                                 _ => panic!("sp not confirm by FinishCycle before finish cycle!"),
@@ -223,18 +235,18 @@ impl Model {
         self.gen_value += 1;
         match self.event_cond {
             None => {
-                println!("agnet a go on. gen: {}, proc: {}.",  self.gen_value, self.proc_value);
+                // println!("agnet a go on. gen: {}, proc: {}.",  self.gen_value, self.proc_value);
                 AgentEvent::N   
             },
             Some(n) => {
                 match self.proc_value % n {
                     0 => {
-                        println!("agnet a fire. gen: {}, proc: {}.",  self.gen_value, self.proc_value);
+                        // println!("agnet a fire. gen: {}, proc: {}.",  self.gen_value, self.proc_value);
                         self.send_count();
                         AgentEvent::Y
                     },
                     _ => {
-                        println!("agnet a go on. gen: {}, proc: {}.",  self.gen_value, self.proc_value);
+                        // println!("agnet a go on. gen: {}, proc: {}.",  self.gen_value, self.proc_value);
                         AgentEvent::N
                     },
                 }
@@ -246,13 +258,13 @@ impl Model {
         for conn in &self.in_connections_1 {
             match conn.channel.try_recv() {
                 Ok(s) => {
-                    println!(
-                        "receiving: gen: {}, prop: {}; self: gen {}, proc: {}.",
-                        s.msg_gen,
-                        s.msg_prop,
-                        self.gen_value,
-                        self.proc_value
-                    );
+                    // println!(
+                    //     "receiving: gen: {}, prop: {}; self: gen {}, proc: {}.",
+                    //     s.msg_gen,
+                    //     s.msg_prop,
+                    //     self.gen_value,
+                    //     self.proc_value
+                    // );
                     self.buffer_1.push(self.process_1(s))
                 },
                 Err(crossbeam_channel::TryRecvError::Disconnected) => panic!("Sender is gone!"),

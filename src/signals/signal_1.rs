@@ -4,6 +4,7 @@ use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc, Weak};
 use crate::signals::{InAgentSet, OutAgentSet, PassiveConnection};
 use crate::supervisor::Broadcast;
+use crate::random_sleep;
 
 #[derive(Debug)]
 pub struct Signal1Gen {
@@ -64,11 +65,14 @@ impl<S: Generate1 + Send, R: Process1 + Send> Propagate1 for Connection1<S, R> {
 impl<S: Generate1 + Send, R: Process1 + Send> PassiveConnection for Connection1<S, R> {
     fn run_under_agent(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>){
         loop {
+            random_sleep();
             match rx_confirm.recv().unwrap() {
                 Broadcast::Exit => break,
                 Broadcast::NewCycle => panic!("agent confirm by NewCycle!"),
                 Broadcast::FinishCycle => {
+                    // println!("conn wait recv signal.");
                     self.propagate(self.refine(self.in_agent.channel.recv().unwrap()));
+                    // println!("conn got & propagated signal.");
                     tx_report.send(true).unwrap();
                 }
             }
