@@ -10,84 +10,12 @@ use crate::signals::signal_2::{Generate2, Propagate2, Process2, PassivePropagate
 use crate::signals::signal_2::{Signal2Gen, Signal2Prop, Signal2Proc};
 use crate::agents::{Agent, AgentPopulation, OutConnectionSet, InConnectionSet, AgentEvent};
 use crate::random_sleep;
+use crate::signals::PassiveConnection;
 
-pub struct Population {
-    agents: Vec<Arc<Mutex<Model>>>,
-}
+
 
 impl AgentPopulation for Population {
-    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<AgentEvent>) {
-        // this version make all connections (only passive supported) into threads controlled by pre-agents.
-        let mut running_agents = Vec::new();
 
-        for agnt in &self.agents {
-            let (tx_agnt_report, rx_agnt_report) = crossbeam_channel::bounded(1);
-            let (tx_agnt_confirm, rx_agnt_confirm) = crossbeam_channel::bounded(1);
-            let running_agnt = Arc::clone(agnt);
-            running_agents.push(RunningSet {
-                instance: thread::spawn(move || {running_agnt.lock().unwrap().run(rx_agnt_confirm, tx_agnt_report)}),
-                report: rx_agnt_report,
-                confirm: tx_agnt_confirm,
-            });
-        }
-
-        let mut agents_with_event = Vec::new();
-        loop {
-            random_sleep();
-            match rx_confirm.recv().unwrap() {
-
-                Broadcast::Exit => {
-                    for r_agnt in &running_agents {
-                        r_agnt.confirm.send(Broadcast::Exit).unwrap();
-                    }
-                    for r_agnt in running_agents {
-                        r_agnt.instance.join().expect("connection join error!");
-                    }
-                    break;
-                },
-
-                Broadcast::NewCycle => {
-                    agents_with_event.clear();
-                    for r_agnt in &running_agents {
-                        r_agnt.confirm.send(Broadcast::NewCycle).unwrap();
-                    }
-                    for r_agnt in &running_agents {
-                        if let AgentEvent::Y = r_agnt.report.recv().unwrap() {
-                            agents_with_event.push((r_agnt.confirm.clone(), r_agnt.report.clone()));
-                        }
-                    }
-
-                    match agents_with_event.len() {
-                        0 => tx_report.send(AgentEvent::N).unwrap(),
-                        _ => {
-                            random_sleep();
-                            tx_report.send(AgentEvent::Y).unwrap();
-                            // println!("pp waiting sp confirm to Finishcycle.");
-                            match rx_confirm.recv().unwrap() {
-                                Broadcast::FinishCycle => {
-                                    for agnt_e in &agents_with_event {
-                                        agnt_e.0.send(Broadcast::FinishCycle).unwrap();
-                                    }
-                                    // println!("pp waiting agnt report FinishCycle.");
-                                    for agnt_e in &agents_with_event {
-                                        match agnt_e.1.recv().unwrap() {
-                                            AgentEvent::N => (),
-                                            AgentEvent::Y => panic!("agnt report Event after FinishCycle!")
-                                        }
-                                    }
-                                    // println!("pp get report from agnt of FinishCycle.")
-                                },
-                                _ => panic!("sp not confirm by FinishCycle before finish cycle!"),
-                            }
-                            tx_report.send(AgentEvent::N).unwrap();
-                        }
-                    }
-                },
-
-                _ => panic!("pp should only recv confirm of NewCycle or Exit!")
-            }
-        }
-    }
 }
 
 impl Population {
@@ -155,79 +83,7 @@ impl Generate1 for Model {
 }
 
 impl Agent for Model {
-    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<AgentEvent>) {
-        let mut running_connections = Vec::new();
-        
-        for conn in &self.out_connections_1 {
-            let running_conn = conn.connection.upgrade().unwrap();
-            let (tx_conn_report, rx_conn_report) = crossbeam_channel::bounded(1);
-            let (tx_conn_confirm, rx_conn_confirm) = crossbeam_channel::bounded(1);
 
-            running_connections.push(RunningSet {
-                instance: thread::spawn(move || {running_conn.lock().unwrap()
-                                                 .run_under_agent(rx_conn_confirm, tx_conn_report)}),
-                report: rx_conn_report,
-                confirm: tx_conn_confirm,
-            });
-        }
-        // failed to use a function of init_connections
-        for conn in &self.out_connections_2 {
-            let running_conn = conn.connection.upgrade().unwrap();
-            let (tx_conn_report, rx_conn_report) = crossbeam_channel::bounded(1);
-            let (tx_conn_confirm, rx_conn_confirm) = crossbeam_channel::bounded(1);
-
-            running_connections.push(RunningSet {
-                instance: thread::spawn(move || {running_conn.lock().unwrap()
-                                                 .run_under_agent(rx_conn_confirm, tx_conn_report)}),
-                report: rx_conn_report,
-                confirm: tx_conn_confirm,
-            });
-        }
-
-        loop {
-            random_sleep();
-            match rx_confirm.recv().unwrap() {
-
-                Broadcast::Exit => {
-                    self.store_1();
-                    for r_cn in &running_connections {
-                        r_cn.confirm.send(Broadcast::Exit).unwrap();
-                    }
-                    for r_cn in running_connections {
-                        r_cn.instance.join().expect("connection join error!");
-                    }
-                    break;
-                },
-
-                Broadcast::NewCycle => {
-                    match self.evolve() {
-                        AgentEvent::N => tx_report.send(AgentEvent::N).unwrap(),
-                        AgentEvent::Y => {
-                            random_sleep();
-                            tx_report.send(AgentEvent::Y).unwrap();
-                            // println!("agnt waiting pp confirm FinishCycle.");
-                            match rx_confirm.recv().unwrap() {
-                                Broadcast::FinishCycle => {
-                                    for r_cn in &running_connections {
-                                        r_cn.confirm.send(Broadcast::FinishCycle).unwrap();
-                                    }
-                                    // println!("agnt waiting conn report finish Prop.");
-                                    for r_cn in &running_connections {
-                                        r_cn.report.recv().unwrap();
-                                    }
-                                    // println!("agnt get conn report finish Prop.");
-                                    tx_report.send(AgentEvent::N).unwrap();
-                                },
-                                _ => panic!("sp not confirm by FinishCycle before finish cycle!"),
-                            }
-                        }
-                    }
-                },
-
-                _ => panic!("agent should only get Exit or NewCycle at beginning of cycle!")
-            }
-        }
-    }
 }
 
 impl Model {
@@ -247,17 +103,17 @@ impl Model {
         ))
     }
 
-    // fn init_passive_connection<C>(&self, conn: C) -> RunningSet<bool>
-    // where C: 'static + PassiveConnection + Send
-    // {
-    //     let (tx_conn_report, rx_conn_report) = crossbeam_channel::bounded(1);
-    //     let (tx_conn_confirm, rx_conn_confirm) = crossbeam_channel::bounded(1);
-    //     RunningSet {
-    //         instance: thread::spawn(move || {conn.run_under_agent(rx_conn_confirm, tx_conn_report)}),
-    //         report: rx_conn_report,
-    //         confirm: tx_conn_confirm,
-    //     }
-    // }
+    fn init_passive_connection<C>(conn: Arc<Mutex<C>>) -> RunningSet<bool>
+    where C: 'static + PassiveConnection + Send + ?Sized
+    {
+        let (tx_conn_report, rx_conn_report) = crossbeam_channel::bounded(1);
+        let (tx_conn_confirm, rx_conn_confirm) = crossbeam_channel::bounded(1);
+        RunningSet {
+            instance: thread::spawn(move || {conn.lock().unwrap().run_under_agent(rx_conn_confirm, tx_conn_report)}),
+            report: rx_conn_report,
+            confirm: tx_conn_confirm,
+        }
+    }
 
     fn evolve(&mut self) -> AgentEvent {
         self.store_1();

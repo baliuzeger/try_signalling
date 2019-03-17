@@ -8,7 +8,25 @@ pub mod signal_1;
 pub mod signal_2;
 
 pub trait PassiveConnection {
-    fn run_under_agent(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>);
+    fn propogate(&self);
+    
+    fn run(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>);
+
+    fn run_under_agent(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>){
+        loop {
+            random_sleep();
+            match rx_confirm.recv().unwrap() {
+                Broadcast::Exit => break,
+                Broadcast::NewCycle => panic!("agent confirm by NewCycle!"),
+                Broadcast::FinishCycle => {
+                    // println!("conn wait recv signal.");
+                    self.propagate();
+                    // println!("conn got & propagated signal.");
+                    tx_report.send(true).unwrap();
+                }
+            }
+        }
+    }
 }
 
 pub trait ActiveConnection {

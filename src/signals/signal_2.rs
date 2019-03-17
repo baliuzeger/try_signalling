@@ -63,21 +63,7 @@ impl<S: Generate2 + Send, R: Process2 + Send> Propagate2 for Connection<S, R> {
 }
 
 impl<S: Generate2 + Send, R: Process2 + Send> PassiveConnection for Connection<S, R> {
-    fn run_under_agent(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>){
-        loop {
-            random_sleep();
-            match rx_confirm.recv().unwrap() {
-                Broadcast::Exit => break,
-                Broadcast::NewCycle => panic!("agent confirm by NewCycle!"),
-                Broadcast::FinishCycle => {
-                    // println!("conn wait recv signal.");
-                    self.propagate(self.refine(self.in_agent.channel.recv().unwrap()));
-                    // println!("conn got & propagated signal.");
-                    tx_report.send(true).unwrap();
-                }
-            }
-        }
-    }
+
 }
 
 impl<S: Generate2 + Send, R: Process2 + Send> Connection<S, R> {

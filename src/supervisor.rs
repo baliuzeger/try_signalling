@@ -13,12 +13,6 @@ pub struct Supervisor {
     pub passive_connections:Vec<Arc<Mutex<dyn PassiveConnection>>>,
 }
 
-pub struct RunningSet<T> {
-    pub instance: thread::JoinHandle<()>,
-    pub report: CCReceiver<T>,
-    pub confirm: CCSender<Broadcast>,
-}
-
 pub enum Broadcast {
     NewCycle,
     FinishCycle,
@@ -98,5 +92,11 @@ impl Supervisor {
                 counter += 1;
             }
         }
+    }
+
+    fn run_population(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<AgentEvent>) {
+        // this version make all connections (only passive supported) into threads controlled by pre-agents.
+        let mut running_agents = 
+        
     }
 }
