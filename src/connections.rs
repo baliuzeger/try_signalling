@@ -4,15 +4,34 @@ use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use std::sync::{Arc, Mutex};
 use crate::supervisor::Broadcast;
-pub mod signal_1;
+// pub mod signal_1;
 pub mod signal_2;
+
+pub struct RunningPassiveConnection {
+    pub instance: JoinHandle<()>,
+    pub report: CCReceiver<bool>,
+    pub confirm: CCSender<BroadCast>,
+}
+
+impl RunningPassiveConnection {
+    fn new<T>(device: Arc<Mutex<T>>) -> RunningPassiveConnection
+    where T: 'static + PassiveConnection + Send + ?Sized
+    {
+        // for strict ordering of agent-connection_prop, bounded(1) is chosen.
+        let (tx_report, rx_report) = crossbeam_channel::bounded(1);
+        let (tx_confirm, rx_confirm) = crossbeam_channel::bounded(1);
+        RunningSet {
+            instance: thread::spawn(move || {device.lock().unwrap().run(rx_confirm, tx_report)}),
+            report: rx_report,
+            confirm: tx_confirm,
+        }
+    }    
+}
 
 pub trait PassiveConnection {
     fn propogate(&self);
     
-    fn run(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>);
-
-    fn run_under_agent(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>){
+    fn run(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>){
         loop {
             random_sleep();
             match rx_confirm.recv().unwrap() {
@@ -29,9 +48,9 @@ pub trait PassiveConnection {
     }
 }
 
-pub trait ActiveConnection {
-    fn evolve(&self);
-}
+// pub trait ActiveConnection {
+//     fn evolve(&self);
+// }
 
 #[derive(Debug)]
 pub struct InAgentSet<T: Send, A: Send> {

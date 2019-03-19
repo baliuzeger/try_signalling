@@ -31,7 +31,7 @@ pub trait Generate2 {
 
 pub trait Propagate2 {
     fn refine(&self, s: Signal2Gen) -> Signal2Prop;
-    fn propagate(&self, s: Signal2Prop);
+    fn propagate_2(&self, s: Signal2Prop);
 }
 
 pub trait Process2 {
@@ -57,13 +57,15 @@ impl<S: Generate2 + Send, R: Process2 + Send> Propagate2 for Connection<S, R> {
         }
     }
     
-    fn propagate(&self, s: Signal2Prop) {
+    fn propagate_2(&self, s: Signal2Prop) {
         self.out_agent.channel.send(s).unwrap();
     }
 }
 
 impl<S: Generate2 + Send, R: Process2 + Send> PassiveConnection for Connection<S, R> {
-
+    fn propagate(&self) {
+        self.propagate_2(self.refine(self.in_agent.channel.recv()));
+    }
 }
 
 impl<S: Generate2 + Send, R: Process2 + Send> Connection<S, R> {
@@ -91,14 +93,4 @@ impl<S: Generate2 + Send, R: Process2 + Send> Connection<S, R> {
         conn
     }
 
-    fn _standby(&self) -> bool {
-        match self.in_agent.channel.try_recv() {
-            Ok(s) => {
-                self.propagate(self.refine(s));
-                true
-            },
-            Err(crossbeam_channel::TryRecvError::Disconnected) => panic!("Sender is gone!"), //should output connection & sender id.
-            Err(crossbeam_channel::TryRecvError::Empty) => false,
-        }
-    }
 }

@@ -94,8 +94,8 @@ pub struct SimplePopulation<T: Agent> {
 }
 
 impl<T: Agent> AgentPopulation for SimplePopulation<T> {
-    fn ruuning_agents(&self) -> Vec<RuuningPopulation> {
-        self.agents.iter().map(|agnt| RuningAgent::new(Arc::clone(&agnt))).collect();
+    fn ruuning_agents(&self) -> Vec<RunningAgent> {
+        self.agents.iter().map(|agnt| RunningAgent::new(Arc::clone(&agnt))).collect();
 
         // for agnt in &self.agents {
         //     let (tx_agnt_report, rx_agnt_report) = crossbeam_channel::bounded(1);

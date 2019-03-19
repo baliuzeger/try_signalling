@@ -22,7 +22,7 @@ mod tests {
 }
 
 pub mod agents;
-pub mod signals;
+pub mod connections;
 pub mod supervisor;
 pub mod agent_populations;
 

@@ -60,7 +60,7 @@ impl Generate1 for Model {
 }
 
 impl Agent for Model {
-    fn running_connections(&self) -> Vec<RunningAgent> {
+    fn running_connections(&self) -> Vec<RunningConnection> {
         self.out_connections_1.iter().map(|cn| RunningConnection::new(Arc::clone(&cn)))
             .chain(self.out_connections_2.iter().map(|cn| RunningConnection::new(Arc::clone(&cn))))
             .collect()

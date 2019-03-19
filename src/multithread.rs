@@ -1,3 +1,4 @@
+// currently not in use due to the problem of impl Device on Agent/AgentPopulation/Connections
 extern crate crossbeam_channel;
 use std::sync::{Mutex, Arc};
 use std::thread;
