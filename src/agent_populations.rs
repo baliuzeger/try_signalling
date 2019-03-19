@@ -1,6 +1,6 @@
 use std::thread;
 use std::thread::JoinHandle;
-use std::sync::{Mutex, Arc, Weak};
+use std::sync::{Mutex, Arc};
 extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
@@ -34,7 +34,7 @@ pub trait AgentPopulation {
 
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<AgentEvent>) {
         // this version make all connections (only passive supported) into threads controlled by pre-agents.
-        let mut running_agents = self.running_agents();
+        let running_agents = self.running_agents();
 
         let mut agents_with_event = Vec::new();
         loop {
@@ -117,4 +117,19 @@ impl<T: 'static + Agent + Send> AgentPopulation for SimplePopulation<T> {
     }
 }
 
+impl<T: 'static + Agent + Send>  SimplePopulation<T> {
+    pub fn new() -> Arc<Mutex<SimplePopulation<T>>> {
+        Arc::new(Mutex::new(SimplePopulation{
+            agents: Vec::new(),
+        }))
+    }
 
+    pub fn add_agent(&mut self, agnt: Arc<Mutex<T>>) {
+        self.agents.push(agnt);
+    }
+
+    
+    pub fn agent_by_id(&self, n: usize) -> Arc<Mutex<T>> {
+        Arc::clone(&self.agents[n])
+    }    
+}

@@ -1,16 +1,15 @@
 extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
-use crate::supervisor::{Broadcast};
-use std::thread;
+// use crate::supervisor::{Broadcast};
+// use std::thread;
 use std::sync::{Mutex, Arc, Weak};
-use crate::connections::{PassiveConnection, RunningPassiveConnection};
+use crate::connections::{RunningPassiveConnection};
 // use crate::connections::signal_1::{Generate1, Propagate1, Process1, PassivePropagate1};
 // use crate::connections::signal_1::{Signal1Gen, Signal1Prop, Signal1Proc};
 use crate::connections::signal_2::{Generate2, Propagate2, Process2, PassivePropagate2};
 use crate::connections::signal_2::{Signal2Gen, Signal2Prop, Signal2Proc};
 use crate::agents::{Agent, OutConnectionSet, InConnectionSet, AgentEvent};
-use crate::random_sleep;
 
 pub struct Model {
     gen_value: i32,

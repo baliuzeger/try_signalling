@@ -38,7 +38,7 @@ pub trait Agent {
     fn evolve(&mut self) -> AgentEvent;
     
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<AgentEvent>) {
-        let mut running_connections = self.running_connections();
+        let running_connections = self.running_connections();
 
         loop {
             random_sleep();

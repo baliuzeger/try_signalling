@@ -1,12 +1,12 @@
 extern crate crossbeam_channel;
-use crossbeam_channel::Receiver as CCReceiver;
-use crossbeam_channel::Sender as CCSender;
+// use crossbeam_channel::Receiver as CCReceiver;
+// use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc};
-use std::thread;
+// use std::thread;
 use std::collections::HashMap;
 use crate::agents::{AgentEvent};
 use crate::agent_populations::{RunningPopulation, AgentPopulation};
-use crate::connections::PassiveConnection;
+// use crate::connections::PassiveConnection;
 use crate::random_sleep;
 
 pub struct Supervisor {
@@ -30,7 +30,7 @@ impl Supervisor {
         // this version make all connections (only passive supported) into threads controlled by pre-agents.
         let mut counter = 0;
         // println!("start making threads for populations.");
-        let mut running_populations: Vec<_> = self.running_populations();
+        let running_populations: Vec<_> = self.running_populations();
         let mut populations_with_event = Vec::new();
         loop {
             if counter >= total_steps {

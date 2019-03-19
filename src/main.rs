@@ -5,15 +5,15 @@ use try_signalling::connections::signal_2::Connection as Connection2;
 use try_signalling::supervisor::{Supervisor};
 // use try_signalling::agents::agent_a::Model as AAgent;
 use try_signalling::agents::agent_b::Model as BAgent;
+use try_signalling::agent_populations::SimplePopulation;
 use std::sync::Arc;
 use std::collections::HashMap;
 
 fn main() {
 
-    // let mut sp0 = Supervisor {
-    //     populations: HashMap::new(),
-    //     passive_connections: Vec::new(),
-    // };
+    let mut sp0 = Supervisor {
+        populations: HashMap::new(),
+    };
 
     // let name_pp_a = String::from("PPA");
     // let pp_a = APopulation::new();
@@ -26,16 +26,16 @@ fn main() {
     // pp_a.lock().unwrap().add_agent(AAgent::new(10, 0, Some(2)));
     // pp_a.lock().unwrap().add_agent(AAgent::new(100, 0, None));
     
-    // let name_pp_b = String::from("PPB");
-    // let pp_b = BPopulation::new();
-    // sp0.add_population(
-    //     name_pp_b.clone(),
-    //     Arc::clone(&pp_b)
-    // );
+    let name_pp_b = String::from("PPB");
+    let pp_b = SimplePopulation::new();
+    sp0.add_population(
+        name_pp_b.clone(),
+        Arc::clone(&pp_b)
+    );
 
-    // pp_b.lock().unwrap().add_agent(BAgent::new(-100, 0, Some(2)));
-    // pp_b.lock().unwrap().add_agent(BAgent::new(-1000, 0, Some(2)));
-    // pp_b.lock().unwrap().add_agent(BAgent::new(-10000, 0, None));
+    pp_b.lock().unwrap().add_agent(BAgent::new(-100, 0, Some(2)));
+    pp_b.lock().unwrap().add_agent(BAgent::new(-1000, 0, Some(2)));
+    pp_b.lock().unwrap().add_agent(BAgent::new(-10000, 0, None));
 
     // // // A -> A, Conn1
     // // let ag1 = pp_a.lock().unwrap().agent_by_id(0);
