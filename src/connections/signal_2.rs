@@ -2,7 +2,7 @@ extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc, Weak};
-use crate::signals::{InAgentSet, OutAgentSet, PassiveConnection};
+use crate::connections::{InAgentSet, OutAgentSet, PassiveConnection};
 use crate::supervisor::Broadcast;
 use crate::random_sleep;
 
@@ -64,7 +64,7 @@ impl<S: Generate2 + Send, R: Process2 + Send> Propagate2 for Connection<S, R> {
 
 impl<S: Generate2 + Send, R: Process2 + Send> PassiveConnection for Connection<S, R> {
     fn propagate(&self) {
-        self.propagate_2(self.refine(self.in_agent.channel.recv()));
+        self.propagate_2(self.refine(self.in_agent.channel.recv().unwrap()));
     }
 }
 

@@ -6,7 +6,7 @@ use std::thread;
 use std::collections::HashMap;
 use crate::agents::{AgentEvent};
 use crate::agent_populations::{RunningPopulation, AgentPopulation};
-use crate::signals::PassiveConnection;
+use crate::connections::PassiveConnection;
 use crate::random_sleep;
 
 pub struct Supervisor {
@@ -71,7 +71,7 @@ impl Supervisor {
 
     fn running_populations(&self) -> Vec<RunningPopulation> {
         self.populations.iter()
-            .map(|(_, pp)| RunningPopulation::new(Arc::clone(&pp))).collect();
+            .map(|(_, pp)| RunningPopulation::new(Arc::clone(&pp))).collect()
     }
     
 }

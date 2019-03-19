@@ -13,18 +13,15 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let x = Rc::new(RefCell::new(agent_a::Agent::new()));
-        let y = Rc::new(RefCell::new(agent_a::Agent::new()));
-        let cn1 = Channel1::new(Rc::clone(&x), Rc::clone(&y));
-//        let cn2 = Rc::new(Channel::new(&x, &y, Signal::Signal_2_));
-        x.borrow().event();
+
     }
 }
 
-pub mod agents;
-pub mod connections;
 pub mod supervisor;
 pub mod agent_populations;
+pub mod agents;
+pub mod connection_populations;
+pub mod connections;
 
 fn random_sleep() {
     thread::sleep(Duration::from_millis(rand::thread_rng().gen_range(1, 101)));

@@ -1,26 +1,30 @@
 use std::sync::{Arc, Mutex};
+use std::thread;
+use std::thread::JoinHandle;
 extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
+use crate::random_sleep;
 use crate::supervisor::Broadcast;
+use crate::connections::RunningPassiveConnection;
 
-pub mod agent_a;
-// pub mod agent_b;
+// pub mod agent_a;
+pub mod agent_b;
 
 pub struct RunningAgent {
     pub instance: JoinHandle<()>,
     pub report: CCReceiver<AgentEvent>,
-    pub confirm: CCSender<BroadCast>,
+    pub confirm: CCSender<Broadcast>,
 }
 
 impl RunningAgent {
-    fn new<T>(device: Arc<Mutex<T>>) -> RunningAgent
+    pub fn new<T>(device: Arc<Mutex<T>>) -> RunningAgent
     where T: 'static + Agent + Send + ?Sized
     {
         // for strict ordering of agent-connection_prop, bounded(1) is chosen.
         let (tx_report, rx_report) = crossbeam_channel::bounded(1);
         let (tx_confirm, rx_confirm) = crossbeam_channel::bounded(1);
-        RunningSet {
+        RunningAgent {
             instance: thread::spawn(move || {device.lock().unwrap().run(rx_confirm, tx_report)}),
             report: rx_report,
             confirm: tx_confirm,
@@ -29,12 +33,12 @@ impl RunningAgent {
 }
 
 pub trait Agent {
-    fn running_connections(&self) -> Vec<RunningAgent>;
+    fn running_connections(&self) -> Vec<RunningPassiveConnection>;
     fn end(&mut self);
     fn evolve(&mut self) -> AgentEvent;
     
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<AgentEvent>) {
-        let mut running_connections = running_connections();
+        let mut running_connections = self.running_connections();
 
         loop {
             random_sleep();
