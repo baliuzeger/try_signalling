@@ -12,29 +12,6 @@ use crate::agents::{Agent, AgentPopulation, OutConnectionSet, InConnectionSet, A
 use crate::random_sleep;
 use crate::signals::PassiveConnection;
 
-
-
-impl AgentPopulation for Population {
-
-}
-
-impl Population {
-    pub fn new() -> Arc<Mutex<Population>> {
-        Arc::new(Mutex::new(Population{
-            agents: Vec::new(),
-        }))
-    }
-
-    pub fn add_agent(&mut self, agnt: Arc<Mutex<Model>>) {
-        self.agents.push(agnt);
-    }
-
-    
-    pub fn agent_by_id(&self, n: usize) -> Arc<Mutex<Model>> {
-        Arc::clone(&self.agents[n])
-    }
-}
-
 pub struct Model {
     gen_value: i32,
     proc_value: i32,
@@ -83,40 +60,18 @@ impl Generate1 for Model {
 }
 
 impl Agent for Model {
-
-}
-
-impl Model {
-    pub fn new(gen_value: i32, proc_value: i32, event_cond: Option<i32>) -> Arc<Mutex<Model>> {
-        Arc::new(Mutex::new(
-            Model{
-                gen_value,
-                proc_value,
-                buffer_1: Vec::new(),
-                out_connections_1: Vec::new(),
-                in_connections_1: Vec::new(),
-                buffer_2: Vec::new(),
-                out_connections_2: Vec::new(),
-                in_connections_2: Vec::new(),
-                event_cond,
-            }
-        ))
+    fn running_connections(&self) -> Vec<RunningAgent> {
+        self.out_connections_1.iter().map(|cn| RunningConnection::new(Arc::clone(&cn)))
+            .chain(self.out_connections_2.iter().map(|cn| RunningConnection::new(Arc::clone(&cn))))
+            .collect()
     }
-
-    fn init_passive_connection<C>(conn: Arc<Mutex<C>>) -> RunningSet<bool>
-    where C: 'static + PassiveConnection + Send + ?Sized
-    {
-        let (tx_conn_report, rx_conn_report) = crossbeam_channel::bounded(1);
-        let (tx_conn_confirm, rx_conn_confirm) = crossbeam_channel::bounded(1);
-        RunningSet {
-            instance: thread::spawn(move || {conn.lock().unwrap().run_under_agent(rx_conn_confirm, tx_conn_report)}),
-            report: rx_conn_report,
-            confirm: tx_conn_confirm,
-        }
+    
+    fn end(&mut self) {
+        self.store();
     }
-
+    
     fn evolve(&mut self) -> AgentEvent {
-        self.store_1();
+        self.store();
         self.proc_value += 1;
         self.gen_value += 1;
         match self.event_cond {
@@ -139,8 +94,26 @@ impl Model {
             }
         }
     }
+}
+
+impl Model {
+    pub fn new(gen_value: i32, proc_value: i32, event_cond: Option<i32>) -> Arc<Mutex<Model>> {
+        Arc::new(Mutex::new(
+            Model{
+                gen_value,
+                proc_value,
+                buffer_1: Vec::new(),
+                out_connections_1: Vec::new(),
+                in_connections_1: Vec::new(),
+                buffer_2: Vec::new(),
+                out_connections_2: Vec::new(),
+                in_connections_2: Vec::new(),
+                event_cond,
+            }
+        ))
+    }
     
-    fn store_1(&mut self) {
+    fn store(&mut self) {
         for conn in &self.in_connections_1 {
             match conn.channel.try_recv() {
                 Ok(s) => {

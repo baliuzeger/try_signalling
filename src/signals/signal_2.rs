@@ -45,7 +45,7 @@ pub struct Connection<S: Generate2 + Send, R: Process2 + Send> {
     value: i32,
 }
 
-pub trait  PassivePropagate2: PassiveConnection + Propagate2 {}
+pub trait PassivePropagate2: PassiveConnection + Propagate2 {}
 
 impl<S: Generate2 + Send, R: Process2 + Send> PassivePropagate2 for Connection<S, R> {}
 

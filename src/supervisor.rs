@@ -4,13 +4,13 @@ use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc};
 use std::thread;
 use std::collections::HashMap;
-use crate::agents::{AgentPopulation, AgentEvent};
+use crate::agents::{AgentEvent};
+use crate::agent_populations::{RunningPopulation, AgentPopulation};
 use crate::signals::PassiveConnection;
 use crate::random_sleep;
 
 pub struct Supervisor {
     pub populations: HashMap<String, Arc<Mutex<dyn AgentPopulation + Send>>>,
-    pub passive_connections:Vec<Arc<Mutex<dyn PassiveConnection>>>,
 }
 
 pub enum Broadcast {
@@ -20,19 +20,6 @@ pub enum Broadcast {
 }
 
 impl Supervisor {
-    // pub fn add_passive_connection<S, R>(&mut self, cn: Arc<Mutex<Connection1<S, R>>>)
-    // where S: 'static + Generate1 + Send,
-    //       R: 'static + Process1 + Send
-    // {
-    //     self.passive_connections.push(cn);
-    // }
-
-    pub fn add_passive_connection<T>(&mut self, cn: Arc<Mutex<T>>)
-    where T: 'static + PassiveConnection + Send,
-    {
-        self.passive_connections.push(cn);
-    }
-
     pub fn add_population<T>(&mut self, key: String, pp: Arc<Mutex<T>>)
     where T: 'static + AgentPopulation + Send
     {
@@ -42,20 +29,8 @@ impl Supervisor {
     pub fn run(&self, total_steps: u32) {
         // this version make all connections (only passive supported) into threads controlled by pre-agents.
         let mut counter = 0;
-        let mut running_populations = Vec::new();
         // println!("start making threads for populations.");
-        for (_, pp) in &self.populations {
-            let (tx_pp_report, rx_pp_report) = crossbeam_channel::bounded(1);
-            let (tx_pp_confirm, rx_pp_confirm) = crossbeam_channel::bounded(1);
-            let running_pp = Arc::clone(&pp);
-            // println!("making threads for populations.");
-            running_populations.push(RunningSet {
-                instance: thread::spawn(move || {running_pp.lock().unwrap().run(rx_pp_confirm, tx_pp_report)}),
-                report: rx_pp_report,
-                confirm: tx_pp_confirm,
-            });
-        }
-
+        let mut running_populations: Vec<_> = self.running_populations();
         let mut populations_with_event = Vec::new();
         loop {
             if counter >= total_steps {
@@ -94,9 +69,9 @@ impl Supervisor {
         }
     }
 
-    fn run_population(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<AgentEvent>) {
-        // this version make all connections (only passive supported) into threads controlled by pre-agents.
-        let mut running_agents = 
-        
+    fn running_populations(&self) -> Vec<RunningPopulation> {
+        self.populations.iter()
+            .map(|(_, pp)| RunningPopulation::new(Arc::clone(&pp))).collect();
     }
+    
 }

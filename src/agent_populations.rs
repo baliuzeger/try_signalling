@@ -1,9 +1,33 @@
+use crate::supervisor::Broadcast;
+use crate::random_sleep();
+
+pub struct RunningPopulation {
+    pub instance: JoinHandle<()>,
+    pub report: CCReceiver<AgentEvent>,
+    pub confirm: CCSender<BroadCast>,
+}
+
+impl RunningPoulation {
+    fn new<T>(device: Arc<Mutex<T>>) -> RunningPopulation
+    where T: 'static + AgentPopulation + Send + ?Sized
+    {
+        // for strict ordering of agent-connection_prop, bounded(1) is chosen.
+        let (tx_report, rx_report) = crossbeam_channel::bounded(1);
+        let (tx_confirm, rx_confirm) = crossbeam_channel::bounded(1);
+        RunningSet {
+            instance: thread::spawn(move || {device.lock().unwrap().run(rx_confirm, tx_report)}),
+            report: rx_report,
+            confirm: tx_confirm,
+        }
+    }    
+}
+
 pub trait AgentPopulation {
-    fn ruuning_agents(&self) -> Vec<RuuningSet<Broadcast, AgentEvent>>;
+    fn running_agents(&self) -> Vec<RuuningPopulation<Broadcast, AgentEvent>>;
 
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<AgentEvent>) {
         // this version make all connections (only passive supported) into threads controlled by pre-agents.
-        let mut running_agents = self.ruuning_agents();
+        let mut running_agents = self.running_agents();
 
         let mut agents_with_event = Vec::new();
         loop {
@@ -70,17 +94,19 @@ pub struct SimplePopulation<T: Agent> {
 }
 
 impl<T: Agent> AgentPopulation for SimplePopulation<T> {
-    fn ruuning_agents(&self) -> Vec<RuuningSet<Broadcast, AgentEvent>> {
-                for agnt in &self.agents {
-            let (tx_agnt_report, rx_agnt_report) = crossbeam_channel::bounded(1);
-            let (tx_agnt_confirm, rx_agnt_confirm) = crossbeam_channel::bounded(1);
-            let running_agnt = Arc::clone(agnt);
-            running_agents.push(RunningSet {
-                instance: thread::spawn(move || {running_agnt.lock().unwrap().run(rx_agnt_confirm, tx_agnt_report)}),
-                report: rx_agnt_report,
-                confirm: tx_agnt_confirm,
-            });
-        }
+    fn ruuning_agents(&self) -> Vec<RuuningPopulation> {
+        self.agents.iter().map(|agnt| RuningAgent::new(Arc::clone(&agnt))).collect();
+
+        // for agnt in &self.agents {
+        //     let (tx_agnt_report, rx_agnt_report) = crossbeam_channel::bounded(1);
+        //     let (tx_agnt_confirm, rx_agnt_confirm) = crossbeam_channel::bounded(1);
+        //     let running_agnt = Arc::clone(agnt);
+        //     running_agents.push(RunningSet {
+        //         instance: thread::spawn(move || {running_agnt.lock().unwrap().run(rx_agnt_confirm, tx_agnt_report)}),
+        //         report: rx_agnt_report,
+        //         confirm: tx_agnt_confirm,
+        //     });
+        // }
     }
 }
 

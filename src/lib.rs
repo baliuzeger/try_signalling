@@ -24,6 +24,7 @@ mod tests {
 pub mod agents;
 pub mod signals;
 pub mod supervisor;
+pub mod agent_populations;
 
 fn random_sleep() {
     thread::sleep(Duration::from_millis(rand::thread_rng().gen_range(1, 101)));
