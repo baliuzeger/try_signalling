@@ -1,6 +1,7 @@
 // use std::rc::{Rc};
 // use std::cell::RefCell;
 // use try_signalling::connections::signal_1::Connection as Connection1;
+use try_signalling::connection_populations::SimplePassiveConnectionPopulation;
 use try_signalling::connections::signal_2::Connection as Connection2;
 use try_signalling::supervisor::{Supervisor};
 // use try_signalling::agents::agent_a::Model as AAgent;
@@ -27,16 +28,22 @@ fn main() {
     // pp_a.lock().unwrap().add_agent(AAgent::new(100, 0, None));
     
     let name_pp_b = String::from("PPB");
-    let pp_b = SimplePopulation::new();
+    let pp_agnt_b = SimplePopulation::new();
     sp0.add_population(
         name_pp_b.clone(),
-        Arc::clone(&pp_b)
+        Arc::clone(&pp_agnt_b)
     );
+    
+    pp_agnt_b.lock().unwrap().add_agent(BAgent::new(-100, 0, Some(2)));
+    pp_agnt_b.lock().unwrap().add_agent(BAgent::new(-1000, 0, Some(2)));
+    pp_agnt_b.lock().unwrap().add_agent(BAgent::new(-10000, 0, None));
 
-    pp_b.lock().unwrap().add_agent(BAgent::new(-100, 0, Some(2)));
-    pp_b.lock().unwrap().add_agent(BAgent::new(-1000, 0, Some(2)));
-    pp_b.lock().unwrap().add_agent(BAgent::new(-10000, 0, None));
-
+    let pp_conn_2 = SimplePassiveConnectionPopulation::<Connection2<BAgent, BAgent>>::new();
+    // B -> B, Conn2
+    let ag1 = pp_agnt_b.lock().unwrap().agent_by_id(1);
+    let ag2 = pp_agnt_b.lock().unwrap().agent_by_id(2);
+    pp_conn_2.lock().unwrap().add_connection(Connection2::new(ag1, ag2, 12));
+    
     // // // A -> A, Conn1
     // // let ag1 = pp_a.lock().unwrap().agent_by_id(0);
     // // let ag2 = pp_a.lock().unwrap().agent_by_id(2);
@@ -48,32 +55,29 @@ fn main() {
     // sp0.add_passive_connection(Connection2::new(ag1, ag2, 2));
 
     // // // b -> B, Conn1
-    // // let ag1 = pp_b.lock().unwrap().agent_by_id(0);
-    // // let ag2 = pp_b.lock().unwrap().agent_by_id(2);
+    // // let ag1 = pp_agnt_b.lock().unwrap().agent_by_id(0);
+    // // let ag2 = pp_agnt_b.lock().unwrap().agent_by_id(2);
     // // sp0.add_passive_connection(Connection1::new(ag1, ag2, 11));
 
-    // // // B -> B, Conn2
-    // // let ag1 = pp_b.lock().unwrap().agent_by_id(1);
-    // // let ag2 = pp_b.lock().unwrap().agent_by_id(2);
-    // // sp0.add_passive_connection(Connection2::new(ag1, ag2, 12));
+
 
     // // // A -> B, Conn1
     // // let ag1 = pp_a.lock().unwrap().agent_by_id(0);
-    // // let ag2 = pp_b.lock().unwrap().agent_by_id(2);
+    // // let ag2 = pp_agnt_b.lock().unwrap().agent_by_id(2);
     // // sp0.add_passive_connection(Connection1::new(ag1, ag2, 101));
 
     // // // A -> B, Conn2
     // // let ag1 = pp_a.lock().unwrap().agent_by_id(1);
-    // // let ag2 = pp_b.lock().unwrap().agent_by_id(2);
+    // // let ag2 = pp_agnt_b.lock().unwrap().agent_by_id(2);
     // // sp0.add_passive_connection(Connection2::new(ag1, ag2, 102));
     
     // // B -> A, Conn1
-    // let ag1 = pp_b.lock().unwrap().agent_by_id(0);
+    // let ag1 = pp_agnt_b.lock().unwrap().agent_by_id(0);
     // let ag2 = pp_a.lock().unwrap().agent_by_id(2);
     // sp0.add_passive_connection(Connection1::new(ag1, ag2, 1001));
 
     // // B -> A, Conn2
-    // let ag1 = pp_b.lock().unwrap().agent_by_id(1);
+    // let ag1 = pp_agnt_b.lock().unwrap().agent_by_id(1);
     // let ag2 = pp_a.lock().unwrap().agent_by_id(2);
     // sp0.add_passive_connection(Connection2::new(ag1, ag2, 1002));
 
@@ -85,7 +89,7 @@ fn main() {
     // //     1
     // // ));
     
-    // sp0.run(30);
+    sp0.run(30);
 
     // pp_a.lock().unwrap()
     //     .agent_by_id(2)
@@ -97,14 +101,14 @@ fn main() {
     //     .lock().unwrap()
     //     .show_2();
 
-    // pp_b.lock().unwrap()
+    // pp_agnt_b.lock().unwrap()
     //     .agent_by_id(2)
     //     .lock().unwrap()
     //     .show_1();
 
-    // pp_b.lock().unwrap()
-    //     .agent_by_id(2)
-    //     .lock().unwrap()
-    //     .show_2();
+    pp_agnt_b.lock().unwrap()
+        .agent_by_id(2)
+        .lock().unwrap()
+        .show_2();
     
 }
