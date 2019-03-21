@@ -3,8 +3,8 @@ use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc, Weak};
 use crate::supervisor::RunMode;
-use crate::agents::{AgentIdleModule, PreAgentFwdModule, PostAgentFwdModule};
-use crate::connections::{ConnectionIdleModule, ConnectionFwdModule};
+use crate::agents::{AgentModuleIdle, PreAgentModuleFFW, PostAgentModuleFFW};
+use crate::connections::{ConnectionModuleIdle, ConnectionModuleFFW};
 
 pub mod connection_1x;
 
@@ -27,18 +27,51 @@ pub struct BkwdPostS1 {
 }
 
 pub struct PreAgentModuleS1 {
-    config: RunMode<AgentIdleModule<dyn Propagate1 + Send>,
-                    PreAgentFwdModule<dyn Propagate1 + Send, FwdPreS1>>
+    config: RunMode<AgentModuleIdle<dyn Propagate1 + Send>,
+                    PreAgentModuleFFW<dyn Propagate1 + Send, FwdPreS1>>
 }
 
 pub struct PostAgentModuleS1 {
-    config: RunMode<AgentIdleModule<dyn Propagate1 + Send>,
-                    PostAgentFwdModule<dyn Propagate1 + Send, FwdPostS1>>
+    config: RunMode<AgentModuleIdle<dyn Propagate1 + Send>,
+                    PostAgentModuleFFW<dyn Propagate1 + Send, FwdPostS1>>
 }
 
 pub struct ConnectionModuleS1<G: S1Generator + Send, A: S1Acceptor + Send> {
-    config: RunMode<ConnectionIdleModule<G, A>,
-                    ConnectionFwdModule<G, A, FwdPreS1, FwdPostS1>>
+    config: RunMode<ConnectionModuleIdle<G, A>,
+                    ConnectionModuleFFW<G, A, FwdPreS1, FwdPostS1>>
+}
+
+impl<G, A, R, S> ConnectionModuleS1<G, A>
+where G: S1Generator + Send,
+      A: S1Acceptor + Send,
+{
+    fn config_feedforward(&mut self, pre_channel: CCReceiver<FwdPreS1>, post_channel: CCSender<FwdPostS1>) {
+        match &self.config {
+            RunMode::Idle(m) => self.config = RunMode::Feedforward(m.make_ffw(pre_channel, post_channel)),
+            _ => panic!("call fn config_feedforward when not RunMode::Idle!"),
+        }
+    }
+    
+    fn config_idle(&mut self) {
+        match &self.config {
+            RunMode::Feedforward(m) => self.config = RunMode::Idle(m.make_idle()),
+            RunMode => panic!("call fn config_idle when RunMode::Idle!"),
+        }
+    }
+
+    fn import(&mut self) {
+        match &self.config {
+            RunMode::Feedforward(m) => m.import();
+            RunMode => panic!("call fn import when RunMode::Idle!"),
+        }
+    }
+
+    fn export(&self, s: FwdPostS1) {
+        match &self.config {
+            RunMode::Feedforward(m) => m.export();
+            RunMode => panic!("call fn export when RunMode::Idle!"),
+        }
+    }    
 }
 
 impl PreAgentModuleS1 {
@@ -50,18 +83,6 @@ impl PreAgentModuleS1 {
             _ => panic!("PreAgentmodules1 is not Feedforward when feedforward called!");
         }
     }
-}
-
-
-pub enum ConnectionModuleS1<S: Generate1 + Send, R: Process1 + Send> {
-    Idle{
-        pre: Arc<Mutex<S>>,
-        post: Arc<Mutex<R>>,
-    },
-    FeedForward{
-        pre: FwdInSet<FwdPreS1, Arc<Mutex<S>>>,
-        post: FwdOutSet<FwdPostS1, Arc<Mutex<R>>>
-    },
 }
 
 

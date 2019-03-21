@@ -14,6 +14,12 @@ pub enum RunMode<I, F> {
     Feedforward(F),
 }
 
+impl<I, F> RunMode<I, F> {
+    fn idle_unwrap(&self) -> I {
+        
+    }
+}
+
 pub struct Supervisor {
     pub populations: HashMap<String, Arc<Mutex<dyn AgentPopulation + Send>>>,
 }

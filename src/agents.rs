@@ -95,31 +95,31 @@ pub enum AgentEvent {
     N,
 }
 
-pub struct AgentIdleModule<C: Send> {
+pub struct AgentModuleIdle<C: Send> {
     connections: Vec<Weak<Mutex<C>>>
 }
 
-pub struct PreAgentFwdModule<C: Send, S: Send> {
-    connections: Vec<FwdOutSet<C, S>>,
+pub struct PreAgentModuleFFW<C: Send, S: Send> {
+    connections: Vec<OutSetFFW<C, S>>,
 }
 
-pub struct PostAgentFwdModule<C: Send, R: Send> {
-    connections: Vec<FwdInSet<C, R>>,
+pub struct PostAgentModuleFFW<C: Send, R: Send> {
+    connections: Vec<InSetFFW<C, R>>,
     buffer: Vec<R>,
 }
 
-struct FwdOutSet<C: Send, S: Send> {
+struct OutSetFFW<C: Send, S: Send> {
     connection: Weak<Mutex<C>>,
     channel: CCSender<S>,
 }
 
-impl FwdOutSet<T: Send, C> {
+impl OutSetFFW<T: Send, C> {
     fn send(&self, s: T) {
         self.channel.send(s);
     }
 }
 
-struct FwdInSet<C: Send, R: Send> {
+struct InSetFFW<C: Send, R: Send> {
     connection: Weak<Mutex<C>>,
     channel: CCReceiver<R>,
 }
