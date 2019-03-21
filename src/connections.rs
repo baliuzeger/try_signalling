@@ -73,15 +73,15 @@ pub struct ConnectionModuleIdle<G: Send, A: Send> {
 }
 
 impl<G: Send, A: Send> ConnectionModuleIdle<G, A> {
-    fn make_ffw<R, S>(&self, pre_channel: CCReceiver<R>, post_channel: CCSender<S>) -> ConnectionModuleFFW<G, A, R, S>
+    fn make_ffw<R, S>(&self) -> ConnectionModuleFFW<G, A, R, S>
     where R: Send,
           S: Send
     {
         ConnectionModuleFFW {
             pre: Arc::clone(self.pre),
             post: Arc::clone(self.post),
-            pre_channel,
-            post_channel,
+            pre_channel: None,
+            post_channel: None,
             buffer: Vec::new(),
         }
     }
@@ -90,8 +90,8 @@ impl<G: Send, A: Send> ConnectionModuleIdle<G, A> {
 pub struct ConnectionModuleFFW<G: Send, A: Send, R: Send, S: Send> {
     pre: Arc<Mutex<G>>,
     post: Arc<Mutex<A>>,
-    pre_channel: CCReceiver<R>,
-    post_channel: CCSender<S>,
+    pre_channel: Option<CCReceiver<R>>,
+    post_channel: Option<CCSender<S>>,
     buffer: Vec<R>,
 }
 
@@ -103,11 +103,19 @@ impl<G: Send, A: Send, R, S> ConnectionModuleFFW<G, A, R, S> {
         }
     }
 
+    fn set_pre_channel(&mut self, pre_channel: Option<CCReceiver<R>>) {
+        self.pre_channel = pre_channel;
+    }
+
+    fn set_post_channel(&mut self, post_channel: Option<CCSender<S>>) {
+        self.post_channel = post_channel;
+    }
+    
     fn import(&mut self) {
-        self.buffer.push(m.pre_channel.recv().unwrap());
+        self.buffer.push(m.pre_channel.unwrap().recv().unwrap());
     }
 
     fn export(&self, s: S) {
-        self.post_channel.send(s).unwrap(),
+        self.post_channel.uwrap().send(s).unwrap(),
     }
 }

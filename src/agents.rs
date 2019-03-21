@@ -87,9 +87,6 @@ pub trait Agent {
     }
 }
 
-
-
-#[derive(Debug)]
 pub enum AgentEvent {
     Y,
     N,

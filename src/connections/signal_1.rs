@@ -45,10 +45,25 @@ impl<G, A, R, S> ConnectionModuleS1<G, A>
 where G: S1Generator + Send,
       A: S1Acceptor + Send,
 {
-    fn config_feedforward(&mut self, pre_channel: CCReceiver<FwdPreS1>, post_channel: CCSender<FwdPostS1>) {
+
+    fn config_ffw(&mut self, , post_channel: ) {
         match &self.config {
             RunMode::Idle(m) => self.config = RunMode::Feedforward(m.make_ffw(pre_channel, post_channel)),
             _ => panic!("call fn config_feedforward when not RunMode::Idle!"),
+        }
+    }
+
+    fn set_pre_ffw(&mut self, pre_channel: Option<CCReceiver<FwdPreS1>>) {
+        match &self.config {
+            RunMode::Feedforward(m) => m.set_pre_channel(pre_channel),
+            _ => panic!("call fn set_pre_ffw when not RunMode::Feedforward!")
+        }
+    }
+
+    fn set_post_ffw(&mut self, post_channel: Option<CCSender<FwdPostS1>>) {
+        match &self.config {
+            RunMode::Feedforward(m) => m.set_post_channel(post_channel),
+            _ => panic!("call fn set_post_ffw when not RunMode::Feedforward!")
         }
     }
     
@@ -75,6 +90,20 @@ where G: S1Generator + Send,
 }
 
 impl PreAgentModuleS1 {
+    fn config_feedforward(&mut self) {
+        match &self.config {
+            RunMode::Idle(m) => self.config = RunMode::Feedforward(),
+            _ => panic!("call fn config_feedforward when not RunMode::Idle!"),
+        }
+    }
+    
+    fn config_idle(&mut self) {
+        match &self.config {
+            RunMode::Feedforward(m) => self.config = RunMode::Idle(),
+            RunMode => panic!("call fn config_idle when RunMode::Idle!"),
+        }
+    }
+
     fn feedforward(&self, s: FwdPostS1) {
         match self {
             RunMode::FeedForward(v) => {
