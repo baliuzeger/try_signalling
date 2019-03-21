@@ -9,6 +9,11 @@ use crate::agent_populations::{RunningPopulation, AgentPopulation};
 // use crate::connections::PassiveConnection;
 use crate::random_sleep;
 
+pub enum RunMode<I, F> {
+    Idle(I),
+    Feedforward(F),
+}
+
 pub struct Supervisor {
     pub populations: HashMap<String, Arc<Mutex<dyn AgentPopulation + Send>>>,
 }
@@ -75,3 +80,4 @@ impl Supervisor {
     }
     
 }
+

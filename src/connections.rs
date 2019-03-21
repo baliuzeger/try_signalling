@@ -8,7 +8,7 @@ use std::thread::JoinHandle;
 use crate::random_sleep;
 use crate::supervisor::Broadcast;
 pub mod signal_1;
-pub mod signal_2;
+// pub mod signal_2;
 
 pub struct RunningPassiveConnection {
     pub instance: JoinHandle<()>,
@@ -55,14 +55,27 @@ pub trait PassiveConnection {
 //     fn evolve(&self);
 // }
 
-#[derive(Debug)]
-pub struct InAgentSet<T: Send, A: Send> {
-    agent: Arc<Mutex<A>>,
-    channel: CCReceiver<T>,
+// pub struct InAgentSet<T: Send, A: Send> {
+//     agent: Arc<Mutex<A>>,
+//     channel: CCReceiver<T>,
+// }
+
+// pub struct OutAgentSet<T: Send, A: Send> {
+//     agent: Arc<Mutex<A>>,
+//     channel: CCSender<T>,
+// }
+
+
+
+pub struct ConnectionIdleModule<G, A> {
+    pre: Arc<Mutex<G>>,
+    post: Arc<Mutex<A>>,
 }
 
-#[derive(Debug)]
-pub struct OutAgentSet<T: Send, A: Send> {
-    agent: Arc<Mutex<A>>,
-    channel: CCSender<T>,
+pub struct ConnectionFwdModule<G, A, R, S> {
+    pre: Arc<Mutex<G>>,
+    post: Arc<Mutex<A>>,
+    pre_channel: CCReceiver<R>,
+    post_channel: CCSender<S>,
+    buffer: Vec<R>,
 }

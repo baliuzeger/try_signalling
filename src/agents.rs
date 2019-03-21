@@ -8,8 +8,9 @@ use crate::random_sleep;
 use crate::supervisor::Broadcast;
 use crate::connections::RunningPassiveConnection;
 
-pub mod agent_a;
-pub mod agent_b;
+// pub mod agent_a;
+// pub mod agent_b;
+pub mod agent_c;
 
 pub struct RunningAgent {
     pub instance: JoinHandle<()>,
@@ -86,20 +87,39 @@ pub trait Agent {
     }
 }
 
-#[derive(Debug)]
-struct OutConnectionSet<T: Send, C> {
-    connection: C,
-    channel: CCSender<T>,
-}
 
-#[derive(Debug)]
-struct InConnectionSet<T: Send, C> {
-    connection: C,
-    channel: CCReceiver<T>,
-}
 
 #[derive(Debug)]
 pub enum AgentEvent {
     Y,
     N,
+}
+
+pub struct AgentIdleModule<C: Send> {
+    connections: Vec<Weak<Mutex<C>>>
+}
+
+pub struct PreAgentFwdModule<C: Send, S: Send> {
+    connections: Vec<FwdOutSet<C, S>>,
+}
+
+pub struct PostAgentFwdModule<C: Send, R: Send> {
+    connections: Vec<FwdInSet<C, R>>,
+    buffer: Vec<R>,
+}
+
+struct FwdOutSet<C: Send, S: Send> {
+    connection: Weak<Mutex<C>>,
+    channel: CCSender<S>,
+}
+
+impl FwdOutSet<T: Send, C> {
+    fn send(&self, s: T) {
+        self.channel.send(s);
+    }
+}
+
+struct FwdInSet<C: Send, R: Send> {
+    connection: Weak<Mutex<C>>,
+    channel: CCReceiver<R>,
 }
