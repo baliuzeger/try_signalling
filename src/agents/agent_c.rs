@@ -1,6 +1,7 @@
 extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
+use crossbeam_channel::TryIter as CCTryIter;
 use std::sync::{Mutex, Arc, Weak};
 use crate::connections::{RunningPassiveConnection};
 use crate::connections::signal_1::{PreAgentModuleS1, PostAgentModuleS1, S1Generator, S1Propagator, S1Acceptor};
@@ -14,15 +15,16 @@ pub struct Model {
     pre_module_s1: PreAgentModuleS1,
     post_module_s1: PostAgentModuleS1,
     event_cond: Option<i32>,
+    stock: Vec<EndProduct>,
+}
+
+struct EndProduct {
+    pub msg_gen: i32,
+    pub msg_prop: i32,
+    pub msg_proc: i32,
 }
 
 impl S1Generator for Model {
-    fn generate_s1(&self) {
-        self.pre_module_s1.feedforward(FwdPreS1 {
-            msg_gen: self.gen_value,
-        });
-    }
-
     fn add_out_passive_s1<T> (&mut self, connection: Weak<Mutex<T>>)
         where T: 'static + S1PassivePropagator + Send
     {
@@ -32,10 +34,6 @@ impl S1Generator for Model {
 }
 
 impl S1Acceptor for Model {
-    fn accept_s1(&mut self) {
-        self.post_module_s1.store();
-    }
-
     fn add_in_s1<T>(&mut self, connection: Weak<Mutex<T>>) {
         self.post_module_s1.add_connection(connection);
     }
@@ -97,12 +95,25 @@ impl Model {
             Model{
                 gen_value,
                 proc_value,
-                buffer_1: Vec::new(),
-                out_connections_1: Vec::new(),
-                in_connections_1: Vec::new(),
                 event_cond,
             }
         ))
+    }
+
+    fn generate(&self) {
+        self.pre_module_s1.feedforward(FwdPreS1 {
+            msg_gen: self.gen_value,
+        });
+    }
+
+    fn accept(&mut self) {
+        self.stock.append(
+            self.post_module_s1.ffw_accepted().iter().map(|s| EndProduct {
+                msg_gen: s.msg_gen,
+                msg_prop: s.msg_prop,
+                msg_proc: self.proc_value,
+            }).collect()
+        );
     }
     
     fn store(&mut self) {

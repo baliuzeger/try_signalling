@@ -1,6 +1,7 @@
 extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
+use crossbeam_channel::TryIter as CCTryIter;
 use std::sync::{Mutex, Arc, Weak};
 use crate::supervisor::RunMode;
 use crate::agents::{AgentModuleIdle, PreAgentModuleFFW, PostAgentModuleFFW};
@@ -119,30 +120,28 @@ impl PreAgentModuleS1 {
 
     fn feedforward(&self, s: FwdPostS1) {
         match &self {
-            RunMode::FeedForward(v) => {
-                v.iter().map(|set| set.send(s)).collect();
-            }
+            RunMode::FeedForward(m) => m.feeddorward(s),
             _ => panic!("PreAgentmodules1 is not Feedforward when feedforward called!");
         }
     }
 }
 
 impl PostAgentModuleS1 {
-    fn store(&mut self) {
+    pub fn ffw_accepted(&self) -> Vec<FwdPreS1> {
         match &mut self {
-            RunMode::Feedforward(m) => m.store(),
-            RunMode::Idle(_) => panic!("PostAgentModuleS1 is Idle when store called!"),
+            RunMode::Feedforward(m) => m.accepted(),
+            RunMode::Idle(_) => panic!("PostAgentModuleS1 is Idle when .accepted called!"),
         }
     }
-
-    fn add_connection(&mut self, connection: Weak<Mutex<dyn S1Propagator + Send>>) {
+    
+    pub fn add_connection(&mut self, connection: Weak<Mutex<dyn S1Propagator + Send>>) {
         match &mut self.config {
             RunMode::Idle(m) => m.add_conection(connection), 
             _ => panic!("can only add_conntion when RunMode::Idle!"),
         }
     }
 
-    fn config_run(&mut self, mode: RunMode<bool, bool>) {
+    pub fn config_run(&mut self, mode: RunMode<bool, bool>) {
         match (mode, &self.config) {
             (RunMode::Idle(_), _) => println!("config_run for mode Idle, no effect."),
             (mi, RunMode::Idle(ms)) => self.config = RunMode::Feedforward(ms.make_ffw_post()),
@@ -160,7 +159,6 @@ impl PostAgentModuleS1 {
 pub trait S1PassivePropagator: PassiveConnection + S1Propagator {}
 
 pub trait S1Generator {
-    fn generate_s1(&self);
     fn add_out_passive_s1<T: 'static + S1PassivePropagator + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCSender<Signal1Gen>);
     // fn add_out_active<T: 'static + ActivePropagator + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCSender<Signal1Gen>);
 }
@@ -171,6 +169,5 @@ pub trait S1Propagator {
 }
 
 pub trait S1Acceptor {
-    fn accept_s1(&self);
     fn add_in_s1<T: 'static + S1PassivePropagator + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCReceiver<Signal1Prop>);
 }

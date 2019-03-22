@@ -141,15 +141,38 @@ pub struct PreAgentModuleFFW<C: Send, S: Send> {
     connections: Vec<OutSetFFW<C, S>>,
 }
 
-pub struct PostAgentModuleFFW<C: Send, R: Send> {
+impl<C: Send, S: Send> PreAgentModuleFFW<C, S> {
+    fn feedforward(&self, s: S) {
+        for conn in self.connections {
+            match &conn.channel {
+                None => (),
+                Some(tx) => tx.send(s),
+            }
+        }
+    }
+}
+
+pub struct PostAgentModuleFFW<C: Send> {
     connections: Vec<InSetFFW<C, R>>,
-    buffer: Vec<R>,
 }
 
 impl<C: Send, R: Send> PostAgentModuleFFW<C, R> {
+    fn accepted(&self) -> Vec<R> {
+        connections.iter()
+            .filter_map(|conn| {
+                match conn.channel {
+                    None => None,
+                    Some => Some(rx.try_iter()),
+                }
+            }).flatten().collect();
+    }
+
     fn store(&mut self) {
         for conn in connections {
-            self.buffer.append(conn.channel.try_iter().collect());
+            match &conn.channel {
+                None => (),
+                Some(rx) => self.buffer.append(rx.try_iter().collectr()),
+            }
         }
     }
 }
@@ -157,12 +180,6 @@ impl<C: Send, R: Send> PostAgentModuleFFW<C, R> {
 struct OutSetFFW<C: Send, S: Send> {
     connection: Weak<Mutex<C>>,
     channel: Option<CCSender<S>>,
-}
-
-impl OutSetFFW<T: Send, C> {
-    fn send(&self, s: T) {
-        self.channel.send(s);
-    }
 }
 
 struct InSetFFW<C: Send, R: Send> {
