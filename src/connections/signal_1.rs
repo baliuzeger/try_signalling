@@ -28,13 +28,13 @@ pub struct BkwdPostS1 {
 }
 
 pub struct PreAgentModuleS1 {
-    config: RunMode<AgentModuleIdle<dyn S1Propagator + Send>,
-                    PreAgentModuleFFW<dyn S1Propagator + Send, FwdPreS1>>
+    config: RunMode<AgentModuleIdle<dyn S1PassivePropagator + Send>,
+                    PreAgentModuleFFW<dyn S1PassivePropagator + Send, FwdPreS1>>
 }
 
 pub struct PostAgentModuleS1 {
-    config: RunMode<AgentModuleIdle<dyn Propagate1 + Send>,
-                    PostAgentModuleFFW<dyn Propagate1 + Send, FwdPostS1>>
+    config: RunMode<AgentModuleIdle<dyn S1PassivePropagator + Send>,
+                    PostAgentModuleFFW<dyn S1PassivePropagator + Send, FwdPostS1>>
 }
 
 pub struct ConnectionModuleS1<G: S1Generator + Send, A: S1Acceptor + Send> {
@@ -46,7 +46,13 @@ impl<G, A, R, S> ConnectionModuleS1<G, A>
 where G: S1Generator + Send,
       A: S1Acceptor + Send,
 {
-
+    fn mode(&self) -> RunMode<bool, bool> {
+        match self.config {
+            RunMode::Idle(_) => RunMode::Idle(True),
+            RunMode::Feedforward(_) => RunMode::Feedforward(True),
+        }
+    }
+    
     fn config_ffw(&mut self, , post_channel: ) {
         match &self.config {
             RunMode::Idle(m) => self.config = RunMode::Feedforward(m.make_ffw(pre_channel, post_channel)),
@@ -91,7 +97,13 @@ where G: S1Generator + Send,
 }
 
 impl PreAgentModuleS1 {
-    fn add_connection(&mut self, connection: Weak<Mutex<dyn S1Propagator + Send>>) {
+    fn new() -> PreAgentModuleS1 {
+        PreAgentModuleS1 {
+            config: RunMode::Idle(AgentModuleIdle::<dyn S1PassivePropagator + Send>:new()),
+        }
+    }
+    
+    fn add_connection(&mut self, connection: Weak<Mutex<dyn S1PassivePropagator + Send>>) {
         match &mut self.config {
             RunMode::Idle(m) => m.add_conection(connection), 
             _ => panic!("can only add_conntion when RunMode::Idle!"),
@@ -103,11 +115,6 @@ impl PreAgentModuleS1 {
             (RunMode::Idle(_), _) => println!("config_run for mode Idle, no effect."),
             (mi, RunMode::Idle(ms)) => self.config = RunMode::Feedforward(ms.make_ffw_pre()),
             (_, _) => panic!("call fn config_run when not RunMode::Idle!"),
-        }
-
-        match &self.config {
-            RunMode::Idle(m) => self.config = RunMode::Feedforward(),
-            _ => panic!("call fn config_run when not RunMode::Idle!"),
         }
     }
     
@@ -127,6 +134,12 @@ impl PreAgentModuleS1 {
 }
 
 impl PostAgentModuleS1 {
+    fn new() -> PostAgentModuleS1 {
+        PostAgentModuleS1 {
+            config: RunMode::Idle(AgentModuleIdle::<dyn S1Propagator + Send>:new()),
+        }
+    }
+
     pub fn ffw_accepted(&self) -> Vec<FwdPreS1> {
         match &mut self {
             RunMode::Feedforward(m) => m.accepted(),
@@ -147,14 +160,8 @@ impl PostAgentModuleS1 {
             (mi, RunMode::Idle(ms)) => self.config = RunMode::Feedforward(ms.make_ffw_post()),
             (_, _) => panic!("call fn config_run when not RunMode::Idle!"),
         }
-
-        match &self.config {
-            RunMode::Idle(m) => self.config = RunMode::Feedforward(),
-            _ => panic!("call fn config_run when not RunMode::Idle!"),
-        }
     }
 }
-
 
 pub trait S1PassivePropagator: PassiveConnection + S1Propagator {}
 
@@ -164,8 +171,6 @@ pub trait S1Generator {
 }
 
 pub trait S1Propagator {
-    fn refine(&self, s: Signal1Gen) -> Signal1Prop;
-    fn propagate(&self, s: Signal1Prop);
 }
 
 pub trait S1Acceptor {

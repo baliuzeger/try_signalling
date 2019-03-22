@@ -79,7 +79,6 @@ pub struct ConnectionModuleFFW<G: Send, A: Send, R: Send, S: Send> {
     post: Arc<Mutex<A>>,
     pre_channel: Option<CCReceiver<R>>,
     post_channel: Option<CCSender<S>>,
-    buffer: Vec<R>,
 }
 
 impl<G: Send, A: Send, R, S> ConnectionModuleFFW<G, A, R, S> {

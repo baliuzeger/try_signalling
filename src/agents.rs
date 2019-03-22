@@ -99,6 +99,12 @@ pub struct AgentModuleIdle<C: Send> {
 }
 
 impl<C: Send> AgentModuleIdle<C> {
+    fn new() -> AgentModuleIdle<C> {
+        AgentModuleIdle {
+            connections: Vec::new(),
+        }
+    }
+
     fn add_connection(&mut self, connection: Weak<Mutex<C>>) {
         self.connections.push(connection);
     }

@@ -64,7 +64,7 @@ impl Agent for Model {
     }
     
     fn evolve(&mut self) -> AgentEvent {
-        self.store();
+        self.accept();
         self.proc_value += 1;
         self.gen_value += 1;
         match self.event_cond {
@@ -76,7 +76,7 @@ impl Agent for Model {
                 match self.proc_value % n {
                     0 => {
                         // println!("agnet a fire. gen: {}, proc: {}.",  self.gen_value, self.proc_value);
-                        self.send_count();
+                        self.generate();
                         AgentEvent::Y
                     },
                     _ => {
@@ -93,9 +93,12 @@ impl Model {
     pub fn new(gen_value: i32, proc_value: i32, event_cond: Option<i32>) -> Arc<Mutex<Model>> {
         Arc::new(Mutex::new(
             Model{
+                pre_module_s1: PreAgentModuleS1::new(),
+                post_module_s1: PostAgentModuleS1::new(),
                 gen_value,
                 proc_value,
                 event_cond,
+                stock: Vec::new(),
             }
         ))
     }
@@ -115,32 +118,13 @@ impl Model {
             }).collect()
         );
     }
-    
-    fn store(&mut self) {
-        for conn in &self.in_connections_1 {
-            match conn.channel.try_recv() {
-                Ok(s) => {
-                    self.buffer_1.push(self.process_1(s))
-                },
-                Err(crossbeam_channel::TryRecvError::Disconnected) => panic!("Sender is gone!"),
-                Err(crossbeam_channel::TryRecvError::Empty) => (),
-            }
-        }
-    }
-    
-    pub fn send_count(&mut self) {
-        for conn in &self.out_connections_1 {
-            conn.channel.send(self.generate_1()).unwrap();
-        }
-        // self.gen_value += 1;
-    }
 
     pub fn print_values(&self) {
         println!("gen: {}, proc: {}.", self.gen_value, self.proc_value);
     }
     
-    pub fn show_1(&self) {
-        for msg in &self.buffer_1 {
+    pub fn show(&self) {
+        for msg in &self.stock {
             println!(
                 "buffer_1: gen: {}, prop: {}, proc: {}.",
                 msg.msg_gen,
