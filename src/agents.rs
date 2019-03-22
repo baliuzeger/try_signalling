@@ -5,7 +5,7 @@ extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use crate::random_sleep;
-use crate::supervisor::Broadcast;
+use crate::supervisor::{RunMode, Broadcast};
 use crate::connections::RunningPassiveConnection;
 
 // pub mod agent_a;
@@ -34,6 +34,8 @@ impl RunningAgent {
 }
 
 pub trait Agent {
+    fn config_run(&mut self, mode: RunMode);
+    fn config_idle(&mut self);
     fn running_connections(&self) -> Vec<RunningPassiveConnection>;
     fn end(&mut self);
     fn evolve(&mut self) -> AgentEvent;
@@ -96,6 +98,45 @@ pub struct AgentModuleIdle<C: Send> {
     connections: Vec<Weak<Mutex<C>>>
 }
 
+impl<C: Send> AgentModuleIdle<C> {
+    fn add_connection(&mut self, connection: Weak<Mutex<C>>) {
+        self.connections.push(connection);
+    }
+
+    fn make_ffw_pre(&self) -> PreAgentModuleFFW<C: Send, S: Send> {
+        PreAgentModuleFFW {
+            connections: self.connections.iter().map(|conn| OutSetFFW {
+                connection: Arc::downgrade(conn.upgrade().expect("no object in Weak<connection>!")),
+                channel: match conn.mode() {
+                    RunMode::Feedforward -> None,
+                    RunMode::Feedforward -> {
+                        let (tx, rx) = crossbeam_channel::bounded(1);
+                        conn.set_pre_channel(Some(rx));
+                        Some(tx)
+                    },
+                }
+            }).collect(),
+        }
+    }
+
+    fn make_ffw_post(&self) -> PostAgentModuleFFW<C: Send, S: Send> {
+        PostAgentModuleFFW {
+            connections: self.connections.iter().map(|conn| InSetFFW {
+                connection: Arc::downgrade(conn.upgrade().expect("no object in Weak<connection>!")),
+                channel: match conn.mode() {
+                    RunMode::Feedforward -> None,
+                    RunMode::Feedforward -> {
+                        let (tx, rx) = crossbeam_channel::bounded(1);
+                        conn.set_post_channel(Some(tx));
+                        Some(rx)
+                    },
+                }
+            }).collect(),
+            buffer: Vec::new(),
+        }
+    }
+}
+
 pub struct PreAgentModuleFFW<C: Send, S: Send> {
     connections: Vec<OutSetFFW<C, S>>,
 }
@@ -105,9 +146,17 @@ pub struct PostAgentModuleFFW<C: Send, R: Send> {
     buffer: Vec<R>,
 }
 
+impl<C: Send, R: Send> PostAgentModuleFFW<C, R> {
+    fn store(&mut self) {
+        for conn in connections {
+            self.buffer.append(conn.channel.try_iter().collect());
+        }
+    }
+}
+
 struct OutSetFFW<C: Send, S: Send> {
     connection: Weak<Mutex<C>>,
-    channel: CCSender<S>,
+    channel: Option<CCSender<S>>,
 }
 
 impl OutSetFFW<T: Send, C> {
@@ -118,5 +167,5 @@ impl OutSetFFW<T: Send, C> {
 
 struct InSetFFW<C: Send, R: Send> {
     connection: Weak<Mutex<C>>,
-    channel: CCReceiver<R>,
+    channel: Option<CCReceiver<R>>,
 }

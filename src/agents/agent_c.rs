@@ -3,57 +3,60 @@ use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc, Weak};
 use crate::connections::{RunningPassiveConnection};
-use crate::connections::signal_1::{Generate1, Propagate1, Process1, PassivePropagate1};
-use crate::connections::signal_1::{Signal1Gen, Signal1Prop, Signal1Proc};
-use crate::connections::signal_2::{Generate2, Propagate2, Process2, PassivePropagate2};
-use crate::connections::signal_2::{Signal2Gen, Signal2Prop, Signal2Proc};
+use crate::connections::signal_1::{PreAgentModuleS1, PostAgentModuleS1, S1Generator, S1Propagator, S1Acceptor};
+use crate::connections::signal_1::{FwdPreS1, FwdPostS1};
 use crate::agents::{Agent, OutConnectionSet, InConnectionSet, AgentEvent};
+use crate::supervisor::RunMode;
 
 pub struct Model {
     gen_value: i32,
     proc_value: i32,
-    in_connections_1: Vec<InConnectionSet<Signal1Prop, Weak<Mutex<dyn Propagate1 + Send>>>>,
-    pub buffer_1: Vec<Signal1Proc>,
-    out_connections_1: Vec<OutConnectionSet<Signal1Gen, Weak<Mutex<dyn PassivePropagate1 + Send>>>>,
+    pre_module_s1: PreAgentModuleS1,
+    post_module_s1: PostAgentModuleS1,
     event_cond: Option<i32>,
 }
 
-impl Process1 for Model {
-    fn process_1(&self, s: Signal1Prop) -> Signal1Proc {
-        Signal1Proc {
-            msg_gen: s.msg_gen,
-            msg_prop: s.msg_prop,
-            msg_proc: self.proc_value,
-        }
+impl S1Generator for Model {
+    fn generate_s1(&self) {
+        self.pre_module_s1.feedforward(FwdPreS1 {
+            msg_gen: self.gen_value,
+        });
     }
 
-    fn add_in_1<T: 'static + Propagate1 + Send>(&mut self, connection: Weak<Mutex<T>>, channel: CCReceiver<Signal1Prop>) {
-        self.in_connections_1.push(
-            InConnectionSet {
-                connection,
-                channel,
-            });
+    fn add_out_passive_s1<T> (&mut self, connection: Weak<Mutex<T>>)
+        where T: 'static + S1PassivePropagator + Send
+    {
+        self.pre_module_s1.add_connection(connection);
+        
     }
 }
 
-impl Generate1 for Model {
-    fn generate_1(&self) -> Signal1Gen {
-        Signal1Gen {
-            msg_gen: self.gen_value,
-        }
+impl S1Acceptor for Model {
+    fn accept_s1(&mut self) {
+        self.post_module_s1.store();
     }
 
-    fn add_out_1<T: 'static + PassivePropagate1 + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCSender<Signal1Gen>) {
-        self.out_connections_1.push(
-            OutConnectionSet {
-                connection,
-                channel,
-            }
-        );
+    fn add_in_s1<T>(&mut self, connection: Weak<Mutex<T>>) {
+        self.post_module_s1.add_connection(connection);
     }
 }
 
 impl Agent for Model {
+    fn config_run(&mut self, mode: RunMode<bool, bool>) {
+        match mode {
+            RunMode::Idle(_) => println!("config_run for mode Idle, no effect."),
+            RunMode::Feedforward(_) => {
+                self.pre_module_s1.config_run(mode);
+                self.post_module_s1.config_run(mode);
+            },
+        }
+        
+    }
+
+    fn config_idle(&mut self) {
+        
+    }
+
     fn running_connections(&self) -> Vec<RunningPassiveConnection> {
         self.out_connections_1.iter().map(|cn| RunningPassiveConnection::new(cn.connection.upgrade().unwrap())).collect()
     }

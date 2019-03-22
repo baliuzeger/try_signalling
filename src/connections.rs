@@ -6,7 +6,8 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::JoinHandle;
 use crate::random_sleep;
-use crate::supervisor::Broadcast;
+use crate::supervisor::{RunMode, Broadcast};
+
 pub mod signal_1;
 // pub mod signal_2;
 
@@ -32,6 +33,8 @@ impl RunningPassiveConnection {
 }
 
 pub trait PassiveConnection {
+    fn mode(&self) -> RunMode;
+
     fn propagate(&self);
     
     fn run(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>){
@@ -50,22 +53,6 @@ pub trait PassiveConnection {
         }
     }
 }
-
-// pub trait ActiveConnection {
-//     fn evolve(&self);
-// }
-
-// pub struct InAgentSet<T: Send, A: Send> {
-//     agent: Arc<Mutex<A>>,
-//     channel: CCReceiver<T>,
-// }
-
-// pub struct OutAgentSet<T: Send, A: Send> {
-//     agent: Arc<Mutex<A>>,
-//     channel: CCSender<T>,
-// }
-
-
 
 pub struct ConnectionModuleIdle<G: Send, A: Send> {
     pre: Arc<Mutex<G>>,
