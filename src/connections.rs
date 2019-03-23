@@ -55,8 +55,8 @@ pub trait PassiveConnection {
 }
 
 pub struct ConnectionModuleIdle<G: Send, A: Send> {
-    pre: Arc<Mutex<G>>,
-    post: Arc<Mutex<A>>,
+    pre: Weak<Mutex<G>>,
+    post: Weak<Mutex<A>>,
 }
 
 impl<G: Send, A: Send> ConnectionModuleIdle<G, A> {
@@ -65,8 +65,8 @@ impl<G: Send, A: Send> ConnectionModuleIdle<G, A> {
           S: Send
     {
         ConnectionModuleFFW {
-            pre: Arc::clone(self.pre),
-            post: Arc::clone(self.post),
+            pre: Weak::clone(self.pre),
+            post: Weak::clone(self.post),
             pre_channel: None,
             post_channel: None,
             buffer: Vec::new(),
@@ -75,8 +75,8 @@ impl<G: Send, A: Send> ConnectionModuleIdle<G, A> {
 }
 
 pub struct ConnectionModuleFFW<G: Send, A: Send, R: Send, S: Send> {
-    pre: Arc<Mutex<G>>,
-    post: Arc<Mutex<A>>,
+    pre: Weak<Mutex<G>>,
+    post: Weak<Mutex<A>>,
     pre_channel: Option<CCReceiver<R>>,
     post_channel: Option<CCSender<S>>,
 }
@@ -84,8 +84,8 @@ pub struct ConnectionModuleFFW<G: Send, A: Send, R: Send, S: Send> {
 impl<G: Send, A: Send, R, S> ConnectionModuleFFW<G, A, R, S> {
     fn make_idle(&self) -> ConnectionModuleIdle<G, A> {
         ConnectionModuleIdle {
-            pre: Arc::clone(self.pre),
-            post: Arc::clone(self.post),
+            pre: Weak::clone(self.pre),
+            post: Weak::clone(self.post),
         }
     }
 
