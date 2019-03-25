@@ -34,7 +34,8 @@ impl RunningPassiveConnection {
 
 pub trait PassiveConnection {
     fn mode(&self) -> RunMode;
-
+    fn config_run(&mut self, mode: RunMode);
+    fn config_idle(&mut self);
     fn propagate(&self);
     
     fn run(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>){
@@ -51,57 +52,5 @@ pub trait PassiveConnection {
                 }
             }
         }
-    }
-}
-
-pub struct ConnectionModuleIdle<G: Send, A: Send> {
-    pre: Weak<Mutex<G>>,
-    post: Weak<Mutex<A>>,
-}
-
-impl<G: Send, A: Send> ConnectionModuleIdle<G, A> {
-    fn make_ffw<R, S>(&self) -> ConnectionModuleFFW<G, A, R, S>
-    where R: Send,
-          S: Send
-    {
-        ConnectionModuleFFW {
-            pre: Weak::clone(self.pre),
-            post: Weak::clone(self.post),
-            pre_channel: None,
-            post_channel: None,
-            buffer: Vec::new(),
-        }
-    }
-}
-
-pub struct ConnectionModuleFFW<G: Send, A: Send, R: Send, S: Send> {
-    pre: Weak<Mutex<G>>,
-    post: Weak<Mutex<A>>,
-    pre_channel: Option<CCReceiver<R>>,
-    post_channel: Option<CCSender<S>>,
-}
-
-impl<G: Send, A: Send, R, S> ConnectionModuleFFW<G, A, R, S> {
-    fn make_idle(&self) -> ConnectionModuleIdle<G, A> {
-        ConnectionModuleIdle {
-            pre: Weak::clone(self.pre),
-            post: Weak::clone(self.post),
-        }
-    }
-
-    fn set_pre_channel(&mut self, pre_channel: Option<CCReceiver<R>>) {
-        self.pre_channel = pre_channel;
-    }
-
-    fn set_post_channel(&mut self, post_channel: Option<CCSender<S>>) {
-        self.post_channel = post_channel;
-    }
-    
-    fn import(&mut self) {
-        self.buffer.push(m.pre_channel.unwrap().recv().unwrap());
-    }
-
-    fn export(&self, s: S) {
-        self.post_channel.uwrap().send(s).unwrap(),
     }
 }
