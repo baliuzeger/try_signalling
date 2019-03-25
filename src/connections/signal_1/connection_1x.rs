@@ -2,21 +2,18 @@ extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc, Weak};
-use crate::connections::{InAgentSet, OutAgentSet, PassiveConnection};
-// use crate::supervisor::Broadcast;
-// use crate::random_sleep;
+use crate::connections::{PassiveConnection};
+use crate::connections::signal_1::{ConnectionModuleS1, S1PassivePropagator, S1Propagator};
 
-pub struct Connection<S: Generate1 + Send, R: Process1 + Send> {
-    in_agent: InAgentSet<Signal1Gen, S>,
-    out_agent: OutAgentSet<Signal1Prop, R>,
+
+pub struct Connection<G: S1Generator + Send, A: S1Acceptor + Send> {
+    module: ConnectionModuleS1<G, A>
     value: i32,
 }
 
+impl<G: S1Generator + Send, A: S1Acceptor + Send> S1PassivePropagator for Connection<S, R> {}
 
-
-impl<S: Generate1 + Send, R: Process1 + Send> PassivePropagate1 for Connection<S, R> {}
-
-impl<S: Generate1 + Send, R: Process1 + Send> Propagate1 for Connection<S, R> {
+impl<G: S1Generator + Send, A: S1Acceptor + Send> S for Connection<S, R> {
     fn refine(&self, s: Signal1Gen) -> Signal1Prop {
         Signal1Prop {
             msg_gen: s.msg_gen,

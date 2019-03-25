@@ -15,10 +15,27 @@ pub enum RunMode<I, F> {
 }
 
 impl<I, F> RunMode<I, F> {
+    pub fn variant<I, F>(m: RunMode<I, F>) -> RunMode<bool, bool> {
+        match m {
+            RunMode::Idle(_) => RunMode::Idle(true),
+            RunMode::Feedforward(_) => RunMode::Feedforward(true),
+        }
+    }
+
+    pub fn eq_variant<I1, F1, I2, F2>(m1: RunMode<I1, F1>, m2: RunMode<I2, F2>) -> RunMode<bool, bool> {
+        match (m1, m2) {
+            (RunMode::Idle(_), RunMode::Idle(_)) => RunMode::Idle(true),
+            (RunMode::Feedforward(_), RunMode::Feedforward(_)) => RunMode::Feedforward(true),
+            _ => panic!("Runmode mismatch at check!"),
+        }
+    }
+    
     fn idle_unwrap(&self) -> I {
         
     }
 }
+
+
 
 pub struct Supervisor {
     pub populations: HashMap<String, Arc<Mutex<dyn AgentPopulation + Send>>>,

@@ -138,7 +138,6 @@ impl<C: Send> AgentModuleIdle<C> {
                     },
                 }
             }).collect(),
-            buffer: Vec::new(),
         }
     }
 }
@@ -148,7 +147,15 @@ pub struct PreAgentModuleFFW<C: Send, S: Send> {
 }
 
 impl<C: Send, S: Send> PreAgentModuleFFW<C, S> {
-    fn feedforward(&self, s: S) {
+    pub fn make_idle(&self) -> AgentModuleIdle<C> {
+        AgentModuleIdle {
+            connections: self.connections.iter()
+                .map(|conn| Arc::downgrade(conn.connection.upgrade().expect("no object in Weak<conection>!")))
+                .collect(),
+        }
+    }
+
+    pub fn feedforward(&self, s: S) {
         for conn in self.connections {
             match &conn.channel {
                 None => (),
@@ -184,11 +191,11 @@ impl<C: Send, R: Send> PostAgentModuleFFW<C, R> {
 }
 
 struct OutSetFFW<C: Send, S: Send> {
-    connection: Weak<Mutex<C>>,
-    channel: Option<CCSender<S>>,
+    pub connection: Weak<Mutex<C>>,
+    pub channel: Option<CCSender<S>>,
 }
 
 struct InSetFFW<C: Send, R: Send> {
-    connection: Weak<Mutex<C>>,
-    channel: Option<CCReceiver<R>>,
+    pub connection: Weak<Mutex<C>>,
+    pub channel: Option<CCReceiver<R>>,
 }

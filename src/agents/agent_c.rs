@@ -10,10 +10,11 @@ use crate::agents::{Agent, OutConnectionSet, InConnectionSet, AgentEvent};
 use crate::supervisor::RunMode;
 
 pub struct Model {
-    gen_value: i32,
-    proc_value: i32,
+    config: RunMode<bool, bool>,
     pre_module_s1: PreAgentModuleS1,
     post_module_s1: PostAgentModuleS1,
+    gen_value: i32,
+    proc_value: i32,
     event_cond: Option<i32>,
     stock: Vec<EndProduct>,
 }
@@ -41,7 +42,7 @@ impl S1Acceptor for Model {
 
 impl Agent for Model {
     fn config_run(&mut self, mode: RunMode<bool, bool>) {
-        match mode {
+        match RunMode::eq_variant(mode, self.mode()) {
             RunMode::Idle(_) => println!("config_run for mode Idle, no effect."),
             RunMode::Feedforward(_) => {
                 self.pre_module_s1.config_run(mode);
@@ -52,7 +53,13 @@ impl Agent for Model {
     }
 
     fn config_idle(&mut self) {
-        
+        match &self.mode() {
+            RunMode::Idle(_) => println!("config_idel at mode Idle, no effect."),
+            RunMode::Feedforward(_) => {
+                self.pre_module_s1.config_idle(mode);
+                self.post_module_s1.config_idle(mode);
+            },
+        }
     }
 
     fn running_connections(&self) -> Vec<RunningPassiveConnection> {
@@ -103,6 +110,10 @@ impl Model {
         ))
     }
 
+    fn mode(&self) -> RunMode<bool, bool> {
+        RunMode::eq_variant(self.pre_module_s1.mode(),self.post_module_s1.mode())
+    }
+    
     fn generate(&self) {
         self.pre_module_s1.feedforward(FwdPreS1 {
             msg_gen: self.gen_value,
