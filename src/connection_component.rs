@@ -1,6 +1,6 @@
 
 pub struct ConnectionComponent<G: Send, A: Send> {
-    config: RunMode<ComponentIdle<G, A>,
+    config: DeviceMode<ComponentIdle<G, A>,
                     ComponentFFW<G, A, FwdPreS1, FwdPostS1>>
 }
 
@@ -10,54 +10,54 @@ where G: S1Generator + Send,
 {
     fn new<G, A>(pre: Weak<Mutex<G>>, post: Weak<Mutex<A>>) -> ConnectionComponent<G, A> {
         ConnectionComponent {
-            config: RunMode::Idle(ComponentIdle::new(pre, post)),
+            config: DeviceMode::Idle(ComponentIdle::new(pre, post)),
         }
     }
 
-    pub fn mode(&self) -> RunMode<bool, bool> {
-        RunMode::variant(self.config)
+    pub fn mode(&self) -> RunMode {
+        DeviceMode::variant(self.config)
     }
 
-    fn config_run(&mut self, mode: RunMode<bool, bool>) {
+    fn config_run(&mut self, mode: RunMode) {
         match (mode, &self.config) {
-            (RunMode::Idle(_), _) => println!("config_run for mode Idle, no effect."),
-            (mi, RunMode::Idle(ms)) => self.config = RunMode::Feedforward(ms.make_ffw()),
-            (_, _) => panic!("call fn config_run when not RunMode::Idle!"),
+            (DeviceMode::Idle(_), _) => println!("config_run for mode Idle, no effect."),
+            (mi, DeviceMode::Idle(ms)) => self.config = DeviceMode::Feedforward(ms.make_ffw()),
+            (_, _) => panic!("call fn config_run when not DeviceMode::Idle!"),
         }
     }
     
     fn config_idle(&mut self) {
         match &self.config {
-            RunMode::Feedforward(m) => self.config = RunMode::Idle(m.make_idle()),
-            RunMode => panic!("call fn config_idle when RunMode::Idle!"),
+            DeviceMode::Feedforward(m) => self.config = DeviceMode::Idle(m.make_idle()),
+            DeviceMode => panic!("call fn config_idle when DeviceMode::Idle!"),
         }
     }
     
     fn set_pre_ffw(&mut self, pre_channel: Option<CCReceiver<FwdPreS1>>) {
         match &self.config {
-            RunMode::Feedforward(m) => m.set_pre_channel(pre_channel),
-            _ => panic!("call fn set_pre_ffw when not RunMode::Feedforward!")
+            DeviceMode::Feedforward(m) => m.set_pre_channel(pre_channel),
+            _ => panic!("call fn set_pre_ffw when not DeviceMode::Feedforward!")
         }
     }
 
     fn set_post_ffw(&mut self, post_channel: Option<CCSender<FwdPostS1>>) {
         match &self.config {
-            RunMode::Feedforward(m) => m.set_post_channel(post_channel),
-            _ => panic!("call fn set_post_ffw when not RunMode::Feedforward!")
+            DeviceMode::Feedforward(m) => m.set_post_channel(post_channel),
+            _ => panic!("call fn set_post_ffw when not DeviceMode::Feedforward!")
         }
     }
     
     pub fn import(&mut self) {
         match &self.config {
-            RunMode::Feedforward(m) => m.import();
-            RunMode => panic!("call fn import when RunMode::Idle!"),
+            DeviceMode::Feedforward(m) => m.import();
+            DeviceMode => panic!("call fn import when DeviceMode::Idle!"),
         }
     }
 
     pub fn export(&self, s: FwdPostS1) {
         match &self.config {
-            RunMode::Feedforward(m) => m.export();
-            RunMode => panic!("call fn export when RunMode::Idle!"),
+            DeviceMode::Feedforward(m) => m.export();
+            DeviceMode => panic!("call fn export when DeviceMode::Idle!"),
         }
     }    
 }

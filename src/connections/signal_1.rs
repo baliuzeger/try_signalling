@@ -2,7 +2,6 @@ extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc, Weak};
-use crate::supervisor::RunMode;
 use crate::agents::{AgentModuleIdle, PreAgentModuleFFW, PostAgentModuleFFW};
 use crate::connections::{ConnectionModuleIdle, ConnectionModuleFFW};
 

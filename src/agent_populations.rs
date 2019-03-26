@@ -4,7 +4,7 @@ use std::sync::{Mutex, Arc};
 extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
-use crate::supervisor::Broadcast;
+use crate::supervisor::{Broadcast, RunMode. DeviceMode};
 use crate::random_sleep;
 use crate::agents::{AgentEvent, RunningAgent, Agent};
 
@@ -15,14 +15,14 @@ pub struct RunningPopulation {
 }
 
 impl RunningPopulation {
-    pub fn new<T>(device: Arc<Mutex<T>>) -> RunningPopulation
+    pub fn new<T>(device: Arc<Mutex<T>>, mode: RunMode) -> RunningPopulation
     where T: 'static + AgentPopulation + Send + ?Sized
     {
         // for strict ordering of agent-connection_prop, bounded(1) is chosen.
         let (tx_report, rx_report) = crossbeam_channel::bounded(1);
         let (tx_confirm, rx_confirm) = crossbeam_channel::bounded(1);
         RunningPopulation {
-            instance: thread::spawn(move || {device.lock().unwrap().run(rx_confirm, tx_report)}),
+            instance: thread::spawn(move || {device.lock().unwrap().run(rx_confirm, tx_report, mode)}),
             report: rx_report,
             confirm: tx_confirm,
         }
@@ -32,9 +32,9 @@ impl RunningPopulation {
 pub trait AgentPopulation {
     fn running_agents(&self) -> Vec<RunningAgent>;
 
-    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<AgentEvent>) {
+    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<AgentEvent>, mode: RunMode) {
         // this version make all connections (only passive supported) into threads controlled by pre-agents.
-        let running_agents = self.running_agents();
+        let running_agents = self.running_agents(mode);
 
         let mut agents_with_event = Vec::new();
         loop {
@@ -101,8 +101,8 @@ pub struct SimplePopulation<T: Agent> {
 }
 
 impl<T: 'static + Agent + Send> AgentPopulation for SimplePopulation<T> {
-    fn running_agents(&self) -> Vec<RunningAgent> {
-        self.agents.iter().map(|agnt| RunningAgent::new(Arc::clone(&agnt))).collect()
+    fn running_agents(&self, mode: RunMode) -> Vec<RunningAgent> {
+        self.agents.iter().map(|agnt| RunningAgent::new(Arc::clone(&agnt), mode)).collect()
 
         // for agnt in &self.agents {
         //     let (tx_agnt_report, rx_agnt_report) = crossbeam_channel::bounded(1);

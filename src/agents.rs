@@ -5,7 +5,7 @@ extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use crate::random_sleep;
-use crate::supervisor::{RunMode, Broadcast};
+use crate::supervisor::{RunMode, DeviceMode, Broadcast};
 use crate::connections::RunningPassiveConnection;
 
 // pub mod agent_a;
@@ -19,14 +19,14 @@ pub struct RunningAgent {
 }
 
 impl RunningAgent {
-    pub fn new<T>(device: Arc<Mutex<T>>) -> RunningAgent
+    pub fn new<T>(device: Arc<Mutex<T>>, mode: RunMode) -> RunningAgent
     where T: 'static + Agent + Send + ?Sized
     {
         // for strict ordering of agent-connection_prop, bounded(1) is chosen.
         let (tx_report, rx_report) = crossbeam_channel::bounded(1);
         let (tx_confirm, rx_confirm) = crossbeam_channel::bounded(1);
         RunningAgent {
-            instance: thread::spawn(move || {device.lock().unwrap().run(rx_confirm, tx_report)}),
+            instance: thread::spawn(move || {device.lock().unwrap().run(rx_confirm, tx_report, mode)}),
             report: rx_report,
             confirm: tx_confirm,
         }
@@ -34,13 +34,14 @@ impl RunningAgent {
 }
 
 pub trait Agent {
-    fn config_run(&mut self, mode: RunMode);
+    fn config_run(&mut self, mode: DeviceMode<bool>);
     fn config_idle(&mut self);
     fn running_connections(&self) -> Vec<RunningPassiveConnection>;
     fn end(&mut self);
     fn evolve(&mut self) -> AgentEvent;
     
-    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<AgentEvent>) {
+    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<AgentEvent>, mode: RunMode) {
+        self.config_run(mode);
         let running_connections = self.running_connections();
 
         loop {

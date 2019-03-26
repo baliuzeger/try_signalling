@@ -7,10 +7,10 @@ use crate::connections::{RunningPassiveConnection};
 use crate::connections::signal_1::{PreAgentModuleS1, PostAgentModuleS1, S1Generator, S1Propagator, S1Acceptor};
 use crate::connections::signal_1::{FwdPreS1, FwdPostS1};
 use crate::agents::{Agent, OutConnectionSet, InConnectionSet, AgentEvent};
-use crate::supervisor::RunMode;
+use crate::supervisor::{RunMode, DeviceMode};
 
 pub struct Model {
-    config: RunMode<bool, bool>,
+    config: DeviceMode<bool, bool>,
     pre_module_s1: PreAgentModuleS1,
     post_module_s1: PostAgentModuleS1,
     gen_value: i32,
@@ -41,10 +41,10 @@ impl S1Acceptor for Model {
 }
 
 impl Agent for Model {
-    fn config_run(&mut self, mode: RunMode<bool, bool>) {
-        match RunMode::eq_variant(mode, self.mode()) {
-            RunMode::Idle(_) => println!("config_run for mode Idle, no effect."),
-            RunMode::Feedforward(_) => {
+    fn config_run(&mut self, mode: RunMode) {
+        match DeviceMode::eq_variant(mode, self.mode()) {
+            DeviceMode::Idle(_) => println!("config_run for mode Idle, no effect."),
+            DeviceMode::Feedforward(_) => {
                 self.pre_module_s1.config_run(mode);
                 self.post_module_s1.config_run(mode);
             },
@@ -54,16 +54,16 @@ impl Agent for Model {
 
     fn config_idle(&mut self) {
         match &self.mode() {
-            RunMode::Idle(_) => println!("config_idel at mode Idle, no effect."),
-            RunMode::Feedforward(_) => {
+            DeviceMode::Idle(_) => println!("config_idel at mode Idle, no effect."),
+            DeviceMode::Feedforward(_) => {
                 self.pre_module_s1.config_idle(mode);
                 self.post_module_s1.config_idle(mode);
             },
         }
     }
 
-    fn running_connections(&self) -> Vec<RunningPassiveConnection> {
-        self.out_connections_1.iter().map(|cn| RunningPassiveConnection::new(cn.connection.upgrade().unwrap())).collect()
+    fn running_connections(&self, mode: RunMode) -> Vec<RunningPassiveConnection> {
+        self.pre_module_s1.running_connections(mode)
     }
     
     fn end(&mut self) {
@@ -110,8 +110,8 @@ impl Model {
         ))
     }
 
-    fn mode(&self) -> RunMode<bool, bool> {
-        RunMode::eq_variant(self.pre_module_s1.mode(),self.post_module_s1.mode())
+    fn mode(&self) -> RunMode {
+        DeviceMode::eq_variant(self.pre_module_s1.mode(),self.post_module_s1.mode())
     }
     
     fn generate(&self) {

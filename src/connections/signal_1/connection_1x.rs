@@ -5,8 +5,7 @@ use std::sync::{Mutex, Arc, Weak};
 use crate::connections::{PassiveConnection};
 use crate::connections::signal_1::{ConnectionModuleS1, S1PassivePropagator, S1Propagator};
 use crate::connections::signal_1::{FwdPreS1, FwdPostS1};
-use crate::supervisor::RunMode;
-
+use crate::supervisor::{RunMode, DeviceMode};
 
 pub struct Model<G: S1Generator + Send, A: S1Acceptor + Send> {
     module: ConnectionModuleS1<G, A>
@@ -22,7 +21,7 @@ impl<G: S1Generator + Send, A: S1Acceptor + Send> PassiveConnection for Model<G,
         RunMode::variant(self.module.mode());
     }
 
-    fn config_run(&mut self, mode: RunMode<bool, bool>) {
+    fn config_run(&mut self, mode: RunMode) {
         self.module.config_run(mode);
     }
     

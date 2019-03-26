@@ -9,36 +9,40 @@ use crate::agent_populations::{RunningPopulation, AgentPopulation};
 // use crate::connections::PassiveConnection;
 use crate::random_sleep;
 
-pub enum RunMode<I, F> {
+pub enum RunMode {
+    Idle,
+    Feedforward,
+}
+
+impl RunMode {
+    pub fn mode_from_device<I, F>(m: DeviceMode<I, F>) -> RunMode {
+        match m {
+            DeviceMode::Idle(_) => RunMode::Idle,
+            DeviceMode::Feedforward(_) => RunMode::Feedforward,
+        }
+    }    
+}
+
+pub enum DeviceMode<I, F> {
     Idle(I),
     Feedforward(F),
 }
 
-impl<I, F> RunMode<I, F> {
-    pub fn variant<I, F>(m: RunMode<I, F>) -> RunMode<bool, bool> {
-        match m {
-            RunMode::Idle(_) => RunMode::Idle(true),
-            RunMode::Feedforward(_) => RunMode::Feedforward(true),
-        }
-    }
-
-    pub fn eq_variant<I1, F1, I2, F2>(m1: RunMode<I1, F1>, m2: RunMode<I2, F2>) -> RunMode<bool, bool> {
+impl<I, F> DeviceMode<I, F> {
+    pub fn eq_mode<I1, F1, I2, F2>(m1: DeviceMode<I1, F1>, m2: DeviceMode<I2, F2>) -> RunMode {
         match (m1, m2) {
-            (RunMode::Idle(_), RunMode::Idle(_)) => RunMode::Idle(true),
-            (RunMode::Feedforward(_), RunMode::Feedforward(_)) => RunMode::Feedforward(true),
+            (DeviceMode::Idle(_), DeviceMode::Idle(_)) => DeviceMode::Idle(true),
+            (DeviceMode::Feedforward(_), DeviceMode::Feedforward(_)) => DeviceMode::Feedforward(true),
             _ => panic!("Runmode mismatch at check!"),
         }
-    }
-    
-    fn idle_unwrap(&self) -> I {
-        
     }
 }
 
 
 
 pub struct Supervisor {
-    pub populations: HashMap<String, Arc<Mutex<dyn AgentPopulation + Send>>>,
+    pub agent_populations: HashMap<String, Arc<Mutex<dyn AgentPopulation + Send>>>,
+    pub connection_populations: HashMap<String, Arc<Mutex<dyn ConnectionPopulation + Send>>>,
 }
 
 pub enum Broadcast {
@@ -54,11 +58,13 @@ impl Supervisor {
         self.populations.insert(key, pp);
     }
     
-    pub fn run(&self, total_steps: u32) {
+    pub fn run(&self, mode: DeviceMode, total_steps: u32) {
         // this version make all connections (only passive supported) into threads controlled by pre-agents.
         let mut counter = 0;
+        self.connection_populations.iter().map(|(_, pp_c)| pp_c.config_run(mode)).collect();
+        self.agent_populations
         // println!("start making threads for populations.");
-        let running_populations: Vec<_> = self.running_populations();
+        let running_populations: Vec<_> = self.running_agent_populations();
         let mut populations_with_event = Vec::new();
         loop {
             if counter >= total_steps {
@@ -97,9 +103,11 @@ impl Supervisor {
         }
     }
 
-    fn running_populations(&self) -> Vec<RunningPopulation> {
-        self.populations.iter()
-            .map(|(_, pp)| RunningPopulation::new(Arc::clone(&pp))).collect()
+    fn running_agent_populations(&self, mode: DeviceMode) -> Vec<RunningPopulation> {
+        self.agent_populations.iter()
+            .map(|(_, pp)| {
+                RunningPopulation::new(Arc::clone(&pp, mode))
+            }).collect()
     }
     
 }

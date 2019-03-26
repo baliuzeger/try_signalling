@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::JoinHandle;
 use crate::random_sleep;
-use crate::supervisor::{RunMode, Broadcast};
+use crate::supervisor::{RunMode, DeviceMode ,Broadcast};
 
 pub mod signal_1;
 // pub mod signal_2;

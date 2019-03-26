@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex, Weak};
 extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
-use crate::supervisor::RunMode;
+use crate::supervisor::{RunMode, DeviceMode};
 
 pub mod {pre_component, post_component}
 
@@ -26,8 +26,8 @@ impl<C: Send> ComponentIdle<C> {
             connections: self.connections.iter().map(|conn| OutSetFFW {
                 connection: Arc::downgrade(conn.upgrade().expect("no object in Weak<connection>!")),
                 channel: match conn.mode() {
-                    RunMode::Feedforward -> None,
-                    RunMode::Feedforward -> {
+                    DeviceMode::Idle -> None,
+                    DeviceMode::Feedforward -> {
                         let (tx, rx) = crossbeam_channel::bounded(1);
                         conn.set_pre_channel(Some(rx));
                         Some(tx)
@@ -42,8 +42,8 @@ impl<C: Send> ComponentIdle<C> {
             connections: self.connections.iter().map(|conn| InSetFFW {
                 connection: Arc::downgrade(conn.upgrade().expect("no object in Weak<connection>!")),
                 channel: match conn.mode() {
-                    RunMode::Feedforward -> None,
-                    RunMode::Feedforward -> {
+                    DeviceMode::Feedforward -> None,
+                    DeviceMode::Feedforward -> {
                         let (tx, rx) = crossbeam_channel::bounded(1);
                         conn.set_post_channel(Some(tx));
                         Some(rx)

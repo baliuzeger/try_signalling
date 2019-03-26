@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 use crate::connections::PassiveConnection;
-use crate::supervisor::RunMode;
+use crate::supervisor::{RunMode, DeviceMode};
 
 pub trait ConnectionPopulation {
     fn config_run(&mut self, mode: RunMode);
