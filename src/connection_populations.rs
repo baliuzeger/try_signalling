@@ -11,6 +11,16 @@ pub struct SimplePassiveConnectionPopulation<T: PassiveConnection> {
     connections: Vec<Arc<Mutex<T>>>,
 }
 
+impl ConnectionPopulation for SimplePassiveConnectionPopulation<T: PassiveConnection> {
+    fn config_run(&mut self, mode: RunMode) {
+        self.connections.iter().map(|conn| conn.lock().unwrap().config_run(mode)).collect();
+    }
+    
+    fn config_idle(&mut self) {
+        self.connections.iter().map(|conn| conn.lock().unwrap().config_idle()).collect();
+    }
+}
+
 impl<T: 'static + PassiveConnection + Send>  SimplePassiveConnectionPopulation<T> {
     pub fn new() -> Arc<Mutex<SimplePassiveConnectionPopulation<T>>> {
         Arc::new(Mutex::new(SimplePassiveConnectionPopulation{

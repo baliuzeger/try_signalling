@@ -3,6 +3,7 @@ extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use crate::supervisor::{RunMode, DeviceMode};
+use crate::connections::{PassiveConnection, RunningPassiveConnection};
 
 pub mod {pre_component, post_component}
 
@@ -54,7 +55,7 @@ impl<C: Send> ComponentIdle<C> {
     }
 }
 
-pub struct PreComponentFFW<C: Send, S: Send> {
+pub struct PreComponentFFW<C: PassiveConnection + Send, S: Send> {
     connections: Vec<OutSetFFW<C, S>>,
 }
 
@@ -62,14 +63,23 @@ impl<C: Send, S: Send> PreComponentFFW<C, S> {
     pub fn make_idle(&self) -> ComponentIdle<C> {
         ComponentIdle {
             connections: self.connections.iter()
-                .map(|conn| Arc::downgrade(conn.connection.upgrade().expect("no object in Weak<conection>!")))
+                .map(|set| Arc::downgrade(set.connection.upgrade().expect("no object in Weak<conection>!")))
                 .collect(),
         }
     }
 
+    pub fn running_connections(&self) -> Vec<RunningPassiveConnection> {
+        self.connections.iter().filter_map(|set| {
+            match &set.channel {
+                None => None,
+                Some => RunningPassiveConnection::new(set.connection.upgrade().unwrap()),
+            }
+        }).collect();
+    }
+    
     pub fn feedforward(&self, s: S) {
-        for conn in self.connections {
-            match &conn.channel {
+        for set in self.connections {
+            match &set.channel {
                 None => (),
                 Some(tx) => tx.send(s),
             }

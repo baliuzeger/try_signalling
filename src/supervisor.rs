@@ -58,12 +58,12 @@ impl Supervisor {
         self.populations.insert(key, pp);
     }
     
-    pub fn run(&self, mode: DeviceMode, total_steps: u32) {
+    pub fn run(&self, mode: RunMode, total_steps: u32) {
         // this version make all connections (only passive supported) into threads controlled by pre-agents.
-        let mut counter = 0;
-        self.connection_populations.iter().map(|(_, pp_c)| pp_c.config_run(mode)).collect();
-        self.agent_populations
+        self.connection_populations.iter().map(|(_, pp)| pp.config_run(mode)).collect();
+        self.agent_populations.iter().map(|(_, pp)| pp.config_run(mode)).collect();
         // println!("start making threads for populations.");
+        let mut counter = 0;
         let running_populations: Vec<_> = self.running_agent_populations();
         let mut populations_with_event = Vec::new();
         loop {
@@ -101,6 +101,8 @@ impl Supervisor {
                 counter += 1;
             }
         }
+        self.connection_populations.iter().map(|(_, pp)| pp.config_idle()).collect();
+        self.agent_populations.iter().map(|(_, pp)| pp.config_idle()).collect();
     }
 
     fn running_agent_populations(&self, mode: DeviceMode) -> Vec<RunningPopulation> {

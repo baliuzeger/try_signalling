@@ -30,9 +30,11 @@ impl RunningPopulation {
 }
 
 pub trait AgentPopulation {
+    fn config_run(&self, RunMode);
+    fn config_idle(&mut self);
     fn running_agents(&self) -> Vec<RunningAgent>;
 
-    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<AgentEvent>, mode: RunMode) {
+    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<AgentEvent>) {
         // this version make all connections (only passive supported) into threads controlled by pre-agents.
         let running_agents = self.running_agents(mode);
 
@@ -88,7 +90,6 @@ pub trait AgentPopulation {
                         }
                     }
                 },
-
                 _ => panic!("pp should only recv confirm of NewCycle or Exit!")
             }
         }
@@ -101,8 +102,16 @@ pub struct SimplePopulation<T: Agent> {
 }
 
 impl<T: 'static + Agent + Send> AgentPopulation for SimplePopulation<T> {
-    fn running_agents(&self, mode: RunMode) -> Vec<RunningAgent> {
-        self.agents.iter().map(|agnt| RunningAgent::new(Arc::clone(&agnt), mode)).collect()
+    fn config_run(&self, mode: RunMode) {
+        self.agents.iter().map(|agnt| agnt.lock().unwrap().config_run(mode)).collect();
+    }
+
+    fn config_idle(&self, mode: RunMode) {
+        self.agents.iter().map(|agnt| agnt.lock().unwrap().config_idle()).collect();
+    }
+
+    fn running_agents(&self) -> Vec<RunningAgent> {
+        self.agents.iter().map(|agnt| RunningAgent::new(Arc::clone(&agnt))).collect()
 
         // for agnt in &self.agents {
         //     let (tx_agnt_report, rx_agnt_report) = crossbeam_channel::bounded(1);

@@ -34,14 +34,13 @@ impl RunningAgent {
 }
 
 pub trait Agent {
-    fn config_run(&mut self, mode: DeviceMode<bool>);
+    fn config_run(&mut self, mode: RunMode);
     fn config_idle(&mut self);
     fn running_connections(&self) -> Vec<RunningPassiveConnection>;
     fn end(&mut self);
     fn evolve(&mut self) -> AgentEvent;
     
-    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<AgentEvent>, mode: RunMode) {
-        self.config_run(mode);
+    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<AgentEvent>) {
         let running_connections = self.running_connections();
 
         loop {

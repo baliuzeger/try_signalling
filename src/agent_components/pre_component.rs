@@ -1,14 +1,15 @@
-
+use crate::agent_components::{ComponentIdle, PreComponentFFW, PostComponentFFW};
+use crate::supervisor::{Broadcast, RunMode. DeviceMode};
 
 pub struct PreComponent {
-    config: DeviceMode<AgentModuleIdle<dyn S1PassivePropagator + Send>,
-                    PreAgentModuleFFW<dyn S1PassivePropagator + Send, FwdPreS1>>
+    config: DeviceMode<ComponentIdle<dyn S1PassivePropagator + Send>,
+                    PreComponentFFW<dyn S1PassivePropagator + Send, FwdPreS1>>
 }
 
 impl PreComponent {
     pub fn new() -> PreComponent {
         PreComponent {
-            config: DeviceMode::Idle(AgentModuleIdle::<dyn S1PassivePropagator + Send>:new()),
+            config: DeviceMode::Idle(ComponentIdle::<dyn S1PassivePropagator + Send>:new()),
         }
     }
 
@@ -33,10 +34,9 @@ impl PreComponent {
 
     pub fn running_connections(&self) -> Vec<RunningPassiveConnection> {
         match &self.config {
-            
+            DeviceMode::Idle(_) => panic!("call running_connections when agent Idle!"),
+            DeviceMode::Feedforward(m) => m.running_connections(),
         }
-        
-        self.out_connections_1.iter().map(|cn| RunningPassiveConnection::new(cn.connection.upgrade().unwrap())).collect()
     }
     
     pub fn config_idle(&mut self) {
