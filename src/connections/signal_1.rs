@@ -1,6 +1,3 @@
-extern crate crossbeam_channel;
-use crossbeam_channel::Receiver as CCReceiver;
-use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Weak};
 use crate::connections::{PassiveConnection};
 use crate::connection_component::{ConnectionComponent};
@@ -30,7 +27,7 @@ pub struct FwdPostS1 {
 pub trait S1PassivePropagator: PassiveConnection + S1Propagator {}
 
 pub trait S1Generator {
-    fn add_out_passive_s1<T: 'static + S1PassivePropagator + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCSender<FwdPreS1>);
+    fn add_out_passive_s1 (&mut self, connection: Weak<Mutex<dyn S1PassivePropagator + Send>>);
     // fn add_out_active<T: 'static + ActivePropagator + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCSender<Signal1Gen>);
 }
 
@@ -38,7 +35,7 @@ pub trait S1Propagator {
 }
 
 pub trait S1Acceptor {
-    fn add_in_s1<T: 'static + S1PassivePropagator + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCReceiver<FwdPostS1>);
+    fn add_in_s1 (&mut self, connection: Weak<Mutex<dyn S1PassivePropagator + Send>>);
 }
 
 pub type PreAgentComponentS1 = PreComponent<dyn S1PassivePropagator + Send, FwdPreS1>;

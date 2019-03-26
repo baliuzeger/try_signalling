@@ -15,14 +15,14 @@ pub struct RunningPopulation {
 }
 
 impl RunningPopulation {
-    pub fn new<T>(device: Arc<Mutex<T>>, mode: RunMode) -> RunningPopulation
+    pub fn new<T>(device: Arc<Mutex<T>>) -> RunningPopulation
     where T: 'static + AgentPopulation + Send + ?Sized
     {
         // for strict ordering of agent-connection_prop, bounded(1) is chosen.
         let (tx_report, rx_report) = crossbeam_channel::bounded(1);
         let (tx_confirm, rx_confirm) = crossbeam_channel::bounded(1);
         RunningPopulation {
-            instance: thread::spawn(move || {device.lock().unwrap().run(rx_confirm, tx_report, mode)}),
+            instance: thread::spawn(move || {device.lock().unwrap().run(rx_confirm, tx_report)}),
             report: rx_report,
             confirm: tx_confirm,
         }
@@ -106,7 +106,7 @@ impl<T: 'static + Agent + Send> AgentPopulation for SimplePopulation<T> {
         self.agents.iter().map(|agnt| agnt.lock().unwrap().config_run(mode)).collect();
     }
 
-    fn config_idle(&self, mode: RunMode) {
+    fn config_idle(&mut self) {
         self.agents.iter().map(|agnt| agnt.lock().unwrap().config_idle()).collect();
     }
 

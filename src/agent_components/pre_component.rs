@@ -3,7 +3,7 @@ use crate::agent_components::{ComponentIdle, PreComponentFFW};
 use crate::supervisor::{RunMode, DeviceMode};
 use crate::connections::{RunningPassiveConnection, PassiveConnection};
 
-pub struct PreComponent<C: PassiveConnection + Send, S: Send> {
+pub struct PreComponent<C: PassiveConnection + Send + ?Sized, S: Send> {
     config: DeviceMode<ComponentIdle<C>,
                        PreComponentFFW<C, S>>
 }

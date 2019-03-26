@@ -4,7 +4,7 @@ use crossbeam_channel::Sender as CCSender;
 use std::sync::{Weak, Mutex};
 use crate::supervisor::{DeviceMode, RunMode};
 
-pub struct ConnectionComponent<G: Send, A: Send, R: Send, S: Send> {
+pub struct ConnectionComponent<G: Send + ?Sized, A: Send + ?Sized, R: Send, S: Send> {
     config: DeviceMode<ComponentIdle<G, A>,
                        ComponentFFW<G, A, R, S>>
 }
@@ -64,7 +64,7 @@ impl<G: Send, A: Send, R: Send, S: Send> ConnectionComponent<G, A, R, S> {
     }    
 }
 
-pub struct ComponentIdle<G: Send, A: Send> {
+pub struct ComponentIdle<G: Send + ?Sized, A: Send + ?Sized> {
     pre: Weak<Mutex<G>>,
     post: Weak<Mutex<A>>,
 }
@@ -90,7 +90,7 @@ impl<G: Send, A: Send> ComponentIdle<G, A> {
     }
 }
 
-pub struct ComponentFFW<G: Send, A: Send, R: Send, S: Send> {
+pub struct ComponentFFW<G: Send + ?Sized, A: Send + ?Sized, R: Send, S: Send> {
     pre: Weak<Mutex<G>>,
     post: Weak<Mutex<A>>,
     pre_channel: Option<CCReceiver<R>>,

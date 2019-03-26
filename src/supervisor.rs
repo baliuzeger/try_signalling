@@ -32,8 +32,8 @@ pub enum DeviceMode<I, F> {
 impl<I, F> DeviceMode<I, F> {
     pub fn eq_mode<I1, F1, I2, F2>(m1: DeviceMode<I1, F1>, m2: DeviceMode<I2, F2>) -> RunMode {
         match (m1, m2) {
-            (DeviceMode::Idle(_), DeviceMode::Idle(_)) => DeviceMode::Idle(true),
-            (DeviceMode::Feedforward(_), DeviceMode::Feedforward(_)) => DeviceMode::Feedforward(true),
+            (DeviceMode::Idle(_), DeviceMode::Idle(_)) => RunMode::Idle,
+            (DeviceMode::Feedforward(_), DeviceMode::Feedforward(_)) => RunMode::Feedforward,
             _ => panic!("Runmode mismatch at check!"),
         }
     }
@@ -53,16 +53,26 @@ pub enum Broadcast {
 }
 
 impl Supervisor {
-    pub fn add_population<T>(&mut self, key: String, pp: Arc<Mutex<T>>)
+    pub fn add_agent_population<T>(&mut self, key: String, pp: Arc<Mutex<T>>)
     where T: 'static + AgentPopulation + Send
     {
-        self.populations.insert(key, pp);
+        self.agent_populations.insert(key, pp);
+    }
+
+    pub fn add_connection_population<T>(&mut self, key: String, pp: Arc<Mutex<T>>)
+    where T: 'static + ConnectionPopulation + Send
+    {
+        self.connection_populations.insert(key, pp);
     }
     
     pub fn run(&self, mode: RunMode, total_steps: u32) {
         // this version make all connections (only passive supported) into threads controlled by pre-agents.
-        self.connection_populations.iter().map(|(_, pp)| pp.config_run(mode)).collect();
-        self.agent_populations.iter().map(|(_, pp)| pp.config_run(mode)).collect();
+        for (_, pp) in self.connection_populations {
+            pp.lock().unwrap().config_run(mode);
+        }
+        for (_, pp) in self.agent_populations {
+            pp.lock().unwrap().config_run(mode);
+        }
         // println!("start making threads for populations.");
         let mut counter = 0;
         let running_populations: Vec<_> = self.running_agent_populations();
@@ -102,8 +112,12 @@ impl Supervisor {
                 counter += 1;
             }
         }
-        self.connection_populations.iter().map(|(_, pp)| pp.config_idle()).collect();
-        self.agent_populations.iter().map(|(_, pp)| pp.config_idle()).collect();
+        for (_, pp) in &self.connection_populations {
+            pp.lock().unwrap().config_idle();
+        }
+        for (_, pp) in &self.agent_populations {
+            pp.lock().unwrap().config_idle();
+        }
     }
 
     fn running_agent_populations(&self) -> Vec<RunningPopulation> {

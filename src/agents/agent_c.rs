@@ -7,7 +7,7 @@ use crate::agents::{Agent, AgentEvent};
 use crate::supervisor::{RunMode, DeviceMode};
 
 pub struct Model {
-    config: DeviceMode<bool, bool>,
+    config: RunMode,
     pre_module_s1: PreAgentComponentS1,
     post_module_s1: PostAgentComponentS1,
     gen_value: i32,
@@ -23,8 +23,7 @@ struct EndProduct {
 }
 
 impl S1Generator for Model {
-    fn add_out_passive_s1<T> (&mut self, connection: Weak<Mutex<T>>)
-        where T: 'static + S1PassivePropagator + Send
+    fn add_out_passive_s1 (&mut self, connection: Weak<Mutex<dyn S1PassivePropagator + Send>>)
     {
         self.pre_module_s1.add_connection(connection);
         
@@ -32,7 +31,7 @@ impl S1Generator for Model {
 }
 
 impl S1Acceptor for Model {
-    fn add_in_s1<T>(&mut self, connection: Weak<Mutex<T>>) {
+    fn add_in_s1(&mut self, connection: Weak<Mutex<dyn S1PassivePropagator + Send>>) {
         self.post_module_s1.add_connection(connection);
     }
 }
@@ -59,8 +58,8 @@ impl Agent for Model {
         }
     }
 
-    fn running_connections(&self, mode: RunMode) -> Vec<RunningPassiveConnection> {
-        self.pre_module_s1.running_connections(mode)
+    fn running_connections(&self) -> Vec<RunningPassiveConnection> {
+        self.pre_module_s1.running_connections()
     }
     
     fn end(&mut self) {

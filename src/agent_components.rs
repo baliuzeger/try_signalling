@@ -8,7 +8,7 @@ use crate::connections::{PassiveConnection, RunningPassiveConnection};
 pub mod pre_component;
 pub mod post_component;
 
-pub struct ComponentIdle<C: PassiveConnection + Send> {
+pub struct ComponentIdle<C: PassiveConnection + Send + ?Sized> {
     connections: Vec<Weak<Mutex<C>>>
 }
 
@@ -25,15 +25,18 @@ impl<C: PassiveConnection + Send> ComponentIdle<C> {
 
     fn make_ffw_pre<S: Send>(&self) -> PreComponentFFW<C, S> {
         PreComponentFFW {
-            connections: self.connections.iter().map(|conn| OutSetFFW {
-                connection: conn.clone(),
-                channel: match conn.lock().unwrap().mode() {
-                    RunMode::Idle => None,
-                    RunMode::Feedforward => {
-                        let (tx, rx) = crossbeam_channel::bounded(1);
-                        conn.set_pre_channel(Some(rx));
-                        Some(tx)
-                    },
+            connections: self.connections.iter().map(|conn| {
+                let unlocked_conn = conn.upgrade().unwrap().lock().unwrap();
+                OutSetFFW {
+                    connection: conn.clone(),
+                    channel: match unlocked_conn.mode() {
+                        RunMode::Idle => None,
+                        RunMode::Feedforward => {
+                            let (tx, rx) = crossbeam_channel::bounded(1);
+                            unlocked_conn.set_pre_channel_ffw(Some(rx));
+                            Some(tx)
+                        },
+                    }
                 }
             }).collect(),
         }
@@ -43,10 +46,10 @@ impl<C: PassiveConnection + Send> ComponentIdle<C> {
         PostComponentFFW {
             connections: self.connections.iter().map(|conn| InSetFFW {
                 connection: conn.clone(),
-                channel: match conn.lock().unwrap().mode() {
+                channel: match conn.upgrade().lock().unwrap().mode() {
                     RunMode::Feedforward => None,
                     RunMode::Feedforward => {
-                        let (tx, rx) = crossbeam_channel::bounded(1);
+x                        let (tx, rx) = crossbeam_channel::bounded(1);
                         conn.set_post_channel(Some(tx));
                         Some(rx)
                     },
@@ -56,7 +59,7 @@ impl<C: PassiveConnection + Send> ComponentIdle<C> {
     }
 }
 
-pub struct PreComponentFFW<C: PassiveConnection + Send, S: Send> {
+pub struct PreComponentFFW<C: PassiveConnection + Send + ?Sized, S: Send> {
     connections: Vec<OutSetFFW<C, S>>,
 }
 
@@ -88,7 +91,7 @@ impl<C: PassiveConnection + Send, S: Send> PreComponentFFW<C, S> {
     }
 }
 
-pub struct PostComponentFFW<C: PassiveConnection + Send, R: Send> {
+pub struct PostComponentFFW<C: PassiveConnection + Send + ?Sized, R: Send> {
     connections: Vec<InSetFFW<C, R>>,
 }
 
@@ -113,12 +116,12 @@ impl<C: PassiveConnection + Send, R: Send> PostComponentFFW<C, R> {
     }
 }
 
-struct OutSetFFW<C: Send, S: Send> {
+struct OutSetFFW<C: Send + ?Sized, S: Send> {
     pub connection: Weak<Mutex<C>>,
     pub channel: Option<CCSender<S>>,
 }
 
-struct InSetFFW<C: Send, R: Send> {
+struct InSetFFW<C: Send + ?Sized, R: Send> {
     pub connection: Weak<Mutex<C>>,
     pub channel: Option<CCReceiver<R>>,
 }

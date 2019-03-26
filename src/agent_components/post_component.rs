@@ -3,12 +3,12 @@ use crate::agent_components::{ComponentIdle, PostComponentFFW};
 use crate::supervisor::{RunMode, DeviceMode};
 use crate::connections::PassiveConnection;
 
-pub struct PostComponent<C: PassiveConnection + Send, S: Send> {
+pub struct PostComponent<C: PassiveConnection + Send + ?Sized, S: Send> {
     config: DeviceMode<ComponentIdle<C>,
                        PostComponentFFW<C, S>>
 }
 
-impl<C: Send, S: Send> PostComponent<C, S> {
+impl<C: PassiveConnection + Send, S: Send> PostComponent<C, S> {
     fn new() -> PostComponent<C, S> {
         PostComponent {
             config: DeviceMode::Idle(ComponentIdle::new()),
