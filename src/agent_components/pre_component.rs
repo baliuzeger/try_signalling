@@ -1,15 +1,17 @@
-use crate::agent_components::{ComponentIdle, PreComponentFFW, PostComponentFFW};
-use crate::supervisor::{Broadcast, RunMode. DeviceMode};
+use std::sync::{Mutex, Weak};
+use crate::agent_components::{ComponentIdle, PreComponentFFW};
+use crate::supervisor::{RunMode, DeviceMode};
+use crate::connections::{RunningPassiveConnection, PassiveConnection};
 
-pub struct PreComponent {
-    config: DeviceMode<ComponentIdle<dyn S1PassivePropagator + Send>,
-                    PreComponentFFW<dyn S1PassivePropagator + Send, FwdPreS1>>
+pub struct PreComponent<C: PassiveConnection + Send, S: Send> {
+    config: DeviceMode<ComponentIdle<C>,
+                       PreComponentFFW<C, S>>
 }
 
-impl PreComponent {
-    pub fn new() -> PreComponent {
+impl<C: PassiveConnection + Send, S: Send> PreComponent<C, S> {
+    pub fn new() -> PreComponent<C, S> {
         PreComponent {
-            config: DeviceMode::Idle(ComponentIdle::<dyn S1PassivePropagator + Send>:new()),
+            config: DeviceMode::Idle(ComponentIdle::new()),
         }
     }
 
@@ -17,7 +19,7 @@ impl PreComponent {
         DeviceMode::variant(self.config)
     }
     
-    pub fn add_connection(&mut self, connection: Weak<Mutex<dyn S1PassivePropagator + Send>>) {
+    pub fn add_connection(&mut self, connection: Weak<Mutex<C>>) {
         match &mut self.config {
             DeviceMode::Idle(m) => m.add_conection(connection), 
             _ => panic!("can only add_conntion when DeviceMode::Idle!"),
@@ -46,10 +48,10 @@ impl PreComponent {
         }
     }
 
-    pub fn feedforward(&self, s: FwdPostS1) {
+    pub fn feedforward(&self, s: S) {
         match &self {
             DeviceMode::FeedForward(m) => m.feeddorward(s),
-            _ => panic!("PreAgentmodules1 is not Feedforward when feedforward called!");
+            _ => panic!("PreAgentmodules1 is not Feedforward when feedforward called!"),
         }
     }
 }

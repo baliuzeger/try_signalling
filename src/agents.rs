@@ -1,11 +1,11 @@
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::JoinHandle;
 extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use crate::random_sleep;
-use crate::supervisor::{RunMode, DeviceMode, Broadcast};
+use crate::supervisor::{RunMode, Broadcast};
 use crate::connections::RunningPassiveConnection;
 
 // pub mod agent_a;

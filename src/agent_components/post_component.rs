@@ -1,12 +1,17 @@
-pub struct PostAgentModuleS1 {
-    config: DeviceMode<AgentModuleIdle<dyn S1PassivePropagator + Send>,
-                    PostAgentModuleFFW<dyn S1PassivePropagator + Send, FwdPostS1>>
+use std::sync::{Weak, Mutex};
+use crate::agent_components::{ComponentIdle, PostComponentFFW};
+use crate::supervisor::{RunMode, DeviceMode};
+use crate::connections::PassiveConnection;
+
+pub struct PostComponent<C: PassiveConnection + Send, S: Send> {
+    config: DeviceMode<ComponentIdle<C>,
+                       PostComponentFFW<C, S>>
 }
 
-impl PostAgentModuleS1 {
-    fn new() -> PostAgentModuleS1 {
-        PostAgentModuleS1 {
-            config: DeviceMode::Idle(AgentModuleIdle::<dyn S1Propagator + Send>:new()),
+impl<C: Send, S: Send> PostComponent<C, S> {
+    fn new() -> PostComponent<C, S> {
+        PostComponent {
+            config: DeviceMode::Idle(ComponentIdle::new()),
         }
     }
 
@@ -14,14 +19,14 @@ impl PostAgentModuleS1 {
         DeviceMode::variant(self.config)
     }
     
-    pub fn ffw_accepted(&self) -> Vec<FwdPreS1> {
+    pub fn ffw_accepted(&self) -> Vec<S> {
         match &mut self {
             DeviceMode::Feedforward(m) => m.accepted(),
-            DeviceMode::Idle(_) => panic!("PostAgentModuleS1 is Idle when .accepted called!"),
+            DeviceMode::Idle(_) => panic!("PostComponent is Idle when .accepted called!"),
         }
     }
     
-    pub fn add_connection(&mut self, connection: Weak<Mutex<dyn S1Propagator + Send>>) {
+    pub fn add_connection(&mut self, connection: Weak<Mutex<S>>) {
         match &mut self.config {
             DeviceMode::Idle(m) => m.add_conection(connection), 
             _ => panic!("can only add_conntion when DeviceMode::Idle!"),

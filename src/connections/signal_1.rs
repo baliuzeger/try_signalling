@@ -1,9 +1,11 @@
 extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
-use std::sync::{Mutex, Arc, Weak};
-use crate::agents::{AgentModuleIdle, PreAgentModuleFFW, PostAgentModuleFFW};
-use crate::connections::{ConnectionModuleIdle, ConnectionModuleFFW};
+use std::sync::{Mutex, Weak};
+use crate::connections::{PassiveConnection};
+use crate::connection_component::{ConnectionComponent};
+use crate::agent_components::pre_component::{PreComponent};
+use crate::agent_components::post_component::{PostComponent};
 
 pub mod connection_1x;
 
@@ -28,7 +30,7 @@ pub struct FwdPostS1 {
 pub trait S1PassivePropagator: PassiveConnection + S1Propagator {}
 
 pub trait S1Generator {
-    fn add_out_passive_s1<T: 'static + S1PassivePropagator + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCSender<Signal1Gen>);
+    fn add_out_passive_s1<T: 'static + S1PassivePropagator + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCSender<FwdPreS1>);
     // fn add_out_active<T: 'static + ActivePropagator + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCSender<Signal1Gen>);
 }
 
@@ -36,9 +38,9 @@ pub trait S1Propagator {
 }
 
 pub trait S1Acceptor {
-    fn add_in_s1<T: 'static + S1PassivePropagator + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCReceiver<Signal1Prop>);
+    fn add_in_s1<T: 'static + S1PassivePropagator + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCReceiver<FwdPostS1>);
 }
 
-type PreAgentComponentS1 = PreComponent<dyn S1PassivePropagator + Send, FwdPreS1>;
-type PostAgentComponentS1 = PostComponent<dyn S1PassivePropagator + Send, FwdPostS1>;
-type ConnectionComponentS1<'a, 'b> = ConnectionComponent<'a S1Generator + Send, 'b S1Acceptor + Send>
+pub type PreAgentComponentS1 = PreComponent<dyn S1PassivePropagator + Send, FwdPreS1>;
+pub type PostAgentComponentS1 = PostComponent<dyn S1PassivePropagator + Send, FwdPostS1>;
+pub type ConnectionComponentS1 = ConnectionComponent<'static + S1Generator + Send, 'static + S1Acceptor + Send, FwdPreS1, FwdPostS1>;

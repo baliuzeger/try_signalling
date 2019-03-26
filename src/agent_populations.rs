@@ -4,7 +4,7 @@ use std::sync::{Mutex, Arc};
 extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
-use crate::supervisor::{Broadcast, RunMode. DeviceMode};
+use crate::supervisor::{Broadcast, RunMode};
 use crate::random_sleep;
 use crate::agents::{AgentEvent, RunningAgent, Agent};
 
@@ -30,13 +30,13 @@ impl RunningPopulation {
 }
 
 pub trait AgentPopulation {
-    fn config_run(&self, RunMode);
+    fn config_run(&self, mode: RunMode);
     fn config_idle(&mut self);
     fn running_agents(&self) -> Vec<RunningAgent>;
 
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<AgentEvent>) {
         // this version make all connections (only passive supported) into threads controlled by pre-agents.
-        let running_agents = self.running_agents(mode);
+        let running_agents = self.running_agents();
 
         let mut agents_with_event = Vec::new();
         loop {

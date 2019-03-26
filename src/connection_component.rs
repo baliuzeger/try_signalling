@@ -1,21 +1,23 @@
+extern crate crossbeam_channel;
+use crossbeam_channel::Receiver as CCReceiver;
+use crossbeam_channel::Sender as CCSender;
+use std::sync::{Weak, Mutex};
+use crate::supervisor::{DeviceMode, RunMode};
 
-pub struct ConnectionComponent<G: Send, A: Send> {
+pub struct ConnectionComponent<G: Send, A: Send, R: Send, S: Send> {
     config: DeviceMode<ComponentIdle<G, A>,
-                    ComponentFFW<G, A, FwdPreS1, FwdPostS1>>
+                       ComponentFFW<G, A, R, S>>
 }
 
-impl<G, A, R, S> ConnectionComponent<G, A>
-where G: S1Generator + Send,
-      A: S1Acceptor + Send,
-{
-    fn new<G, A>(pre: Weak<Mutex<G>>, post: Weak<Mutex<A>>) -> ConnectionComponent<G, A> {
+impl<G: Send, A: Send, R: Send, S: Send> ConnectionComponent<G, A, R, S> {
+    fn new(pre: Weak<Mutex<G>>, post: Weak<Mutex<A>>) -> ConnectionComponent<G, A, R, S> {
         ConnectionComponent {
             config: DeviceMode::Idle(ComponentIdle::new(pre, post)),
         }
     }
 
     pub fn mode(&self) -> RunMode {
-        DeviceMode::variant(self.config)
+        RunMode::mode_from_device(self.config)
     }
 
     fn config_run(&mut self, mode: RunMode) {
@@ -33,14 +35,14 @@ where G: S1Generator + Send,
         }
     }
     
-    fn set_pre_ffw(&mut self, pre_channel: Option<CCReceiver<FwdPreS1>>) {
+    fn set_pre_ffw(&mut self, pre_channel: Option<CCReceiver<R>>) {
         match &self.config {
             DeviceMode::Feedforward(m) => m.set_pre_channel(pre_channel),
             _ => panic!("call fn set_pre_ffw when not DeviceMode::Feedforward!")
         }
     }
 
-    fn set_post_ffw(&mut self, post_channel: Option<CCSender<FwdPostS1>>) {
+    fn set_post_ffw(&mut self, post_channel: Option<CCSender<S>>) {
         match &self.config {
             DeviceMode::Feedforward(m) => m.set_post_channel(post_channel),
             _ => panic!("call fn set_post_ffw when not DeviceMode::Feedforward!")
@@ -49,14 +51,14 @@ where G: S1Generator + Send,
     
     pub fn import(&mut self) {
         match &self.config {
-            DeviceMode::Feedforward(m) => m.import();
+            DeviceMode::Feedforward(m) => m.import(),
             DeviceMode => panic!("call fn import when DeviceMode::Idle!"),
         }
     }
 
-    pub fn export(&self, s: FwdPostS1) {
+    pub fn export(&self, s: S) {
         match &self.config {
-            DeviceMode::Feedforward(m) => m.export();
+            DeviceMode::Feedforward(m) => m.export(),
             DeviceMode => panic!("call fn export when DeviceMode::Idle!"),
         }
     }    
@@ -68,9 +70,11 @@ pub struct ComponentIdle<G: Send, A: Send> {
 }
 
 impl<G: Send, A: Send> ComponentIdle<G, A> {
-    fn new(post: Weak<Mutex<G>>, pre: Weak<Mutex<A>>) -> ComponentIdle {
-        pre,
-        post,
+    fn new(pre: Weak<Mutex<G>>, post: Weak<Mutex<A>>) -> ComponentIdle<G, A> {
+        ComponentIdle {
+            pre,
+            post,
+        }
     }
 
     fn make_ffw<R, S>(&self) -> ComponentFFW<G, A, R, S>
@@ -78,8 +82,8 @@ impl<G: Send, A: Send> ComponentIdle<G, A> {
           S: Send
     {
         ComponentFFW {
-            pre: Weak::clone(self.pre),
-            post: Weak::clone(self.post),
+            pre: self.pre.clone(),
+            post: self.post.clone(),
             pre_channel: None,
             post_channel: None,
          }
@@ -93,7 +97,7 @@ pub struct ComponentFFW<G: Send, A: Send, R: Send, S: Send> {
     post_channel: Option<CCSender<S>>,
 }
 
-impl<G: Send, A: Send, R, S> ComponentFFW<G, A, R, S> {
+impl<G: Send, A: Send, R: Send, S: Send> ComponentFFW<G, A, R, S> {
     fn make_idle(&self) -> ComponentIdle<G, A> {
         ComponentIdle {
             pre: Weak::clone(self.pre),
@@ -114,6 +118,6 @@ impl<G: Send, A: Send, R, S> ComponentFFW<G, A, R, S> {
     }
 
     fn export(&self, s: S) {
-        self.post_channel.expect("FFW connection has no post_channel!").send(s).unwrap(),
+        self.post_channel.expect("FFW connection has no post_channel!").send(s).unwrap();
     }
 }

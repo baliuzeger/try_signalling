@@ -2,16 +2,17 @@ use std::sync::{Arc, Mutex, Weak};
 extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
-use crate::supervisor::{RunMode, DeviceMode};
+use crate::supervisor::{RunMode};
 use crate::connections::{PassiveConnection, RunningPassiveConnection};
 
-pub mod {pre_component, post_component}
+pub mod pre_component;
+pub mod post_component;
 
-pub struct ComponentIdle<C: Send> {
+pub struct ComponentIdle<C: PassiveConnection + Send> {
     connections: Vec<Weak<Mutex<C>>>
 }
 
-impl<C: Send> ComponentIdle<C> {
+impl<C: PassiveConnection + Send> ComponentIdle<C> {
     fn new() -> ComponentIdle<C> {
         ComponentIdle {
             connections: Vec::new(),
@@ -22,13 +23,13 @@ impl<C: Send> ComponentIdle<C> {
         self.connections.push(connection);
     }
 
-    fn make_ffw_pre(&self) -> PreComponentFFW<C: Send, S: Send> {
+    fn make_ffw_pre<S: Send>(&self) -> PreComponentFFW<C, S> {
         PreComponentFFW {
             connections: self.connections.iter().map(|conn| OutSetFFW {
-                connection: Arc::downgrade(conn.upgrade().expect("no object in Weak<connection>!")),
-                channel: match conn.mode() {
-                    DeviceMode::Idle -> None,
-                    DeviceMode::Feedforward -> {
+                connection: conn.clone(),
+                channel: match conn.lock().unwrap().mode() {
+                    RunMode::Idle => None,
+                    RunMode::Feedforward => {
                         let (tx, rx) = crossbeam_channel::bounded(1);
                         conn.set_pre_channel(Some(rx));
                         Some(tx)
@@ -38,13 +39,13 @@ impl<C: Send> ComponentIdle<C> {
         }
     }
 
-    fn make_ffw_post(&self) -> PostComponentFFW<C: Send, S: Send> {
+    fn make_ffw_post<S: Send>(&self) -> PostComponentFFW<C, S> {
         PostComponentFFW {
             connections: self.connections.iter().map(|conn| InSetFFW {
-                connection: Arc::downgrade(conn.upgrade().expect("no object in Weak<connection>!")),
-                channel: match conn.mode() {
-                    DeviceMode::Feedforward -> None,
-                    DeviceMode::Feedforward -> {
+                connection: conn.clone(),
+                channel: match conn.lock().unwrap().mode() {
+                    RunMode::Feedforward => None,
+                    RunMode::Feedforward => {
                         let (tx, rx) = crossbeam_channel::bounded(1);
                         conn.set_post_channel(Some(tx));
                         Some(rx)
@@ -59,7 +60,7 @@ pub struct PreComponentFFW<C: PassiveConnection + Send, S: Send> {
     connections: Vec<OutSetFFW<C, S>>,
 }
 
-impl<C: Send, S: Send> PreComponentFFW<C, S> {
+impl<C: PassiveConnection + Send, S: Send> PreComponentFFW<C, S> {
     pub fn make_idle(&self) -> ComponentIdle<C> {
         ComponentIdle {
             connections: self.connections.iter()
@@ -72,13 +73,13 @@ impl<C: Send, S: Send> PreComponentFFW<C, S> {
         self.connections.iter().filter_map(|set| {
             match &set.channel {
                 None => None,
-                Some => RunningPassiveConnection::new(set.connection.upgrade().unwrap()),
+                Some(_) => RunningPassiveConnection::new(set.connection.upgrade().unwrap()),
             }
         }).collect();
     }
     
     pub fn feedforward(&self, s: S) {
-        for set in self.connections {
+        for set in &self.connections {
             match &set.channel {
                 None => (),
                 Some(tx) => tx.send(s),
@@ -87,23 +88,23 @@ impl<C: Send, S: Send> PreComponentFFW<C, S> {
     }
 }
 
-pub struct PostComponentFFW<C: Send> {
+pub struct PostComponentFFW<C: PassiveConnection + Send, R: Send> {
     connections: Vec<InSetFFW<C, R>>,
 }
 
-impl<C: Send, R: Send> PostComponentFFW<C, R> {
+impl<C: PassiveConnection + Send, R: Send> PostComponentFFW<C, R> {
     fn accepted(&self) -> Vec<R> {
-        connections.iter()
+        self.connections.iter()
             .filter_map(|conn| {
                 match conn.channel {
                     None => None,
-                    Some => Some(rx.try_iter()),
+                    Some(rx) => Some(rx.try_iter()),
                 }
             }).flatten().collect();
     }
 
     fn store(&mut self) {
-        for conn in connections {
+        for conn in &self.connections {
             match &conn.channel {
                 None => (),
                 Some(rx) => self.buffer.append(rx.try_iter().collect()),

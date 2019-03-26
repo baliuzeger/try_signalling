@@ -1,18 +1,15 @@
-extern crate crossbeam_channel;
-use crossbeam_channel::Receiver as CCReceiver;
-use crossbeam_channel::Sender as CCSender;
-use crossbeam_channel::TryIter as CCTryIter;
 use std::sync::{Mutex, Arc, Weak};
 use crate::connections::{RunningPassiveConnection};
-use crate::connections::signal_1::{PreAgentModuleS1, PostAgentModuleS1, S1Generator, S1Propagator, S1Acceptor};
-use crate::connections::signal_1::{FwdPreS1, FwdPostS1};
-use crate::agents::{Agent, OutConnectionSet, InConnectionSet, AgentEvent};
+use crate::connections::signal_1::{S1Generator, S1Acceptor, S1PassivePropagator};
+use crate::connections::signal_1::{FwdPreS1};
+use crate::connections::signal_1::{PreAgentComponentS1, PostAgentComponentS1};
+use crate::agents::{Agent, AgentEvent};
 use crate::supervisor::{RunMode, DeviceMode};
 
 pub struct Model {
     config: DeviceMode<bool, bool>,
-    pre_module_s1: PreAgentModuleS1,
-    post_module_s1: PostAgentModuleS1,
+    pre_module_s1: PreAgentComponentS1,
+    post_module_s1: PostAgentComponentS1,
     gen_value: i32,
     proc_value: i32,
     event_cond: Option<i32>,
@@ -56,8 +53,8 @@ impl Agent for Model {
         match &self.mode() {
             DeviceMode::Idle(_) => println!("config_idel at mode Idle, no effect."),
             DeviceMode::Feedforward(_) => {
-                self.pre_module_s1.config_idle(mode);
-                self.post_module_s1.config_idle(mode);
+                self.pre_module_s1.config_idle();
+                self.post_module_s1.config_idle();
             },
         }
     }
@@ -100,8 +97,8 @@ impl Model {
     pub fn new(gen_value: i32, proc_value: i32, event_cond: Option<i32>) -> Arc<Mutex<Model>> {
         Arc::new(Mutex::new(
             Model{
-                pre_module_s1: PreAgentModuleS1::new(),
-                post_module_s1: PostAgentModuleS1::new(),
+                pre_module_s1: PreAgentComponentS1::new(),
+                post_module_s1: PostAgentComponentS1::new(),
                 gen_value,
                 proc_value,
                 event_cond,

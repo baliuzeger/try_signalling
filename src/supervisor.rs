@@ -6,6 +6,7 @@ use std::sync::{Mutex, Arc};
 use std::collections::HashMap;
 use crate::agents::{AgentEvent};
 use crate::agent_populations::{RunningPopulation, AgentPopulation};
+use crate::connection_populations::{ConnectionPopulation};
 // use crate::connections::PassiveConnection;
 use crate::random_sleep;
 
@@ -105,10 +106,10 @@ impl Supervisor {
         self.agent_populations.iter().map(|(_, pp)| pp.config_idle()).collect();
     }
 
-    fn running_agent_populations(&self, mode: DeviceMode) -> Vec<RunningPopulation> {
+    fn running_agent_populations(&self) -> Vec<RunningPopulation> {
         self.agent_populations.iter()
             .map(|(_, pp)| {
-                RunningPopulation::new(Arc::clone(&pp, mode))
+                RunningPopulation::new(Arc::clone(&pp))
             }).collect()
     }
     
