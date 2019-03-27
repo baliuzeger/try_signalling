@@ -124,14 +124,6 @@ impl Model {
                 msg_proc: self.proc_value,
         }).collect();
         self.stock.append(&mut acc);
-        
-        // self.stock.append(
-        //     self.post_module_s1.ffw_accepted().iter().map(|s| FwdEndProduct {
-        //         msg_gen: s.msg_gen,
-        //         msg_prop: s.msg_prop,
-        //         msg_proc: self.proc_value,
-        //     }).collect()
-        // );
     }
 
     pub fn print_values(&self) {

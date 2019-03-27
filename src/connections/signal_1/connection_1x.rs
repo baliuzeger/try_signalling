@@ -63,6 +63,8 @@ impl<G: S1Generator + Send, A: S1Acceptor + Send> Model<G, A> {
         conn
     }
 
+    //pub fn new_on_populations()
+
     fn refine(&self, s: FwdPreS1) -> FwdPostS1 {
         FwdPostS1 {
             msg_gen: s.msg_gen,
