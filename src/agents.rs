@@ -90,13 +90,13 @@ pub trait Agent {
 }
 
 pub trait Generator<S0: Send, S1: Send>: Agent {
-    fn add_out_passive_s1<C> (&mut self, connection: Weak<Mutex<C>>)
+    fn add_out_passive<C> (&mut self, connection: Weak<Mutex<C>>)
     where C: 'static + PassiveConnection<S0, S1> + Send;
     // fn add_out_active<T: 'static + ActivePropagator + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCSender<Signal1Gen>);
 }
 
 pub trait Acceptor<S0: Send, S1: Send>: Agent {
-    fn add_in_s1<C> (&mut self, connection: Weak<Mutex<C>>)
+    fn add_in<C> (&mut self, connection: Weak<Mutex<C>>)
     where C: 'static + PassiveConnection<S0, S1> + Send;
 }
 

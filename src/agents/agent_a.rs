@@ -1,74 +1,99 @@
-extern crate crossbeam_channel;
-use crossbeam_channel::Receiver as CCReceiver;
-use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc, Weak};
-use crate::connections::{RunningPassiveConnection};
-use crate::connections::signal_1::{Generate1, Propagate1, Process1, PassivePropagate1};
-use crate::connections::signal_1::{Signal1Gen, Signal1Prop, Signal1Proc};
-use crate::connections::signal_2::{Generate2, Propagate2, Process2, PassivePropagate2};
-use crate::connections::signal_2::{Signal2Gen, Signal2Prop, Signal2Proc};
-use crate::agents::{Agent, OutConnectionSet, InConnectionSet, AgentEvent};
+use crate::connections::{RunningPassiveConnection, PassiveConnection};
+use crate::connections::signal_1::{FwdPreS1, FwdPostS1};
+use crate::connections::signal_1::{PreAgentComponentS1, PostAgentComponentS1};
+use crate::connections::signal_1::{FwdPreS2, FwdPostS2};
+use crate::connections::signal_1::{PreAgentComponentS2, PostAgentComponentS2};
+use crate::agents::{Agent, AgentEvent, Generator, Acceptor};
+use crate::supervisor::{RunMode};
 
 pub struct Model {
+    pre_module_s1: PreAgentComponentS1,
+    post_module_s1: PostAgentComponentS1,
+    pre_module_s2: PreAgentComponentS2,
+    post_module_s2: PostAgentComponentS2,
     gen_value: i32,
     proc_value: i32,
-    pub buffer_1: Vec<Signal1Proc>,
-    out_connections_1: Vec<OutConnectionSet<Signal1Gen, Weak<Mutex<dyn PassivePropagate1 + Send>>>>,
-    in_connections_1: Vec<InConnectionSet<Signal1Prop, Weak<Mutex<dyn Propagate1 + Send>>>>,
-    pub buffer_2: Vec<Signal2Proc>,
-    out_connections_2: Vec<OutConnectionSet<Signal2Gen, Weak<Mutex<dyn PassivePropagate2 + Send>>>>,
-    in_connections_2: Vec<InConnectionSet<Signal2Prop, Weak<Mutex<dyn Propagate2 + Send>>>>,
     event_cond: Option<i32>,
+    stock: Vec<FwdEndProduct>,
 }
 
-impl Process1 for Model {
-    fn process_1(&self, s: Signal1Prop) -> Signal1Proc {
-        Signal1Proc {
-            msg_gen: s.msg_gen,
-            msg_prop: s.msg_prop,
-            msg_proc: self.proc_value,
-        }
-    }
+struct FwdEndProduct {
+    pub msg_gen: i32,
+    pub msg_prop: i32,
+    pub msg_proc: i32,
+}
 
-    fn add_in_1<T: 'static + Propagate1 + Send>(&mut self, connection: Weak<Mutex<T>>, channel: CCReceiver<Signal1Prop>) {
-        self.in_connections_1.push(
-            InConnectionSet {
-                connection,
-                channel,
-            });
+impl Generator<FwdPreS1, FwdPostS1> for Model {
+    fn add_out_passive<C> (&mut self, connection: Weak<Mutex<C>>)
+    where C: 'static + PassiveConnection<FwdPreS1, FwdPostS1> + Send
+    {
+        self.pre_module_s1.add_connection(connection);
     }
 }
 
-impl Generate1 for Model {
-    fn generate_1(&self) -> Signal1Gen {
-        Signal1Gen {
-            msg_gen: self.gen_value,
-        }
+impl Acceptor<FwdPreS1, FwdPostS1> for Model {
+    fn add_in<C> (&mut self, connection: Weak<Mutex<C>>)
+    where C: 'static + PassiveConnection<FwdPreS1, FwdPostS1> + Send
+    {
+        self.post_module_s1.add_connection(connection);
     }
+}
 
-    fn add_out_1<T: 'static + PassivePropagate1 + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCSender<Signal1Gen>) {
-        self.out_connections_1.push(
-            OutConnectionSet {
-                connection,
-                channel,
-            }
-        );
+impl Generator<FwdPreS2, FwdPostS2> for Model {
+    fn add_out_passive<C> (&mut self, connection: Weak<Mutex<C>>)
+    where C: 'static + PassiveConnection<FwdPreS2, FwdPostS2> + Send
+    {
+        self.pre_module_s2.add_connection(connection);
+    }
+}
+
+impl Acceptor<FwdPreS2, FwdPostS2> for Model {
+    fn add_in<C> (&mut self, connection: Weak<Mutex<C>>)
+    where C: 'static + PassiveConnection<FwdPreS2, FwdPostS2> + Send
+    {
+        self.post_module_s2.add_connection(connection);
     }
 }
 
 impl Agent for Model {
+    fn config_run(&mut self, mode: RunMode) {
+        match (mode, self.mode()) {
+            (RunMode::Idle, _) => println!("config_run for mode Idle, no effect."),
+            (_, RunMode::Idle) => {
+                self.pre_module_s1.config_run(mode);
+                self.post_module_s1.config_run(mode);
+                self.pre_module_s2.config_run(mode);
+                self.post_module_s2.config_run(mode);
+            },
+            (_, _) => panic!("call config_run when agent not idle!")
+        }
+    }
+
+    fn config_idle(&mut self) {
+        match &self.mode() {
+            RunMode::Idle => println!("config_idel at mode Idle, no effect."),
+            RunMode::Feedforward => {
+                self.pre_module_s1.config_idle();
+                self.post_module_s1.config_idle();
+                self.pre_module_s2.config_idle();
+                self.post_module_s2.config_idle();
+            },
+        }
+    }
+
     fn running_connections(&self) -> Vec<RunningPassiveConnection> {
-        self.out_connections_1.iter().map(|cn| RunningPassiveConnection::new(cn.connection.upgrade().unwrap()))
-            .chain(self.out_connections_2.iter().map(|cn| RunningPassiveConnection::new(cn.connection.upgrade().unwrap())))
-            .collect()
+        self.pre_module_s1.running_connections().append(
+            self.pre_module_s1.running_connections()    
+        )
     }
     
     fn end(&mut self) {
-        self.store();
+        self.accept();
     }
     
     fn evolve(&mut self) -> AgentEvent {
-        self.store();
+        self.accept();
         self.proc_value += 1;
         self.gen_value += 1;
         match self.event_cond {
@@ -80,7 +105,7 @@ impl Agent for Model {
                 match self.proc_value % n {
                     0 => {
                         // println!("agnet a fire. gen: {}, proc: {}.",  self.gen_value, self.proc_value);
-                        self.send_count();
+                        self.generate();
                         AgentEvent::Y
                     },
                     _ => {
@@ -97,64 +122,55 @@ impl Model {
     pub fn new(gen_value: i32, proc_value: i32, event_cond: Option<i32>) -> Arc<Mutex<Model>> {
         Arc::new(Mutex::new(
             Model{
+                pre_module_s1: PreAgentComponentS1::new(),
+                post_module_s1: PostAgentComponentS1::new(),
+                pre_module_s2: PreAgentComponentS2::new(),
+                post_module_s2: PostAgentComponentS1::new(),
                 gen_value,
                 proc_value,
-                buffer_1: Vec::new(),
-                out_connections_1: Vec::new(),
-                in_connections_1: Vec::new(),
-                buffer_2: Vec::new(),
-                out_connections_2: Vec::new(),
-                in_connections_2: Vec::new(),
                 event_cond,
+                stock: Vec::new(),
             }
         ))
     }
-    
-    fn store(&mut self) {
-        for conn in &self.in_connections_1 {
-            match conn.channel.try_recv() {
-                Ok(s) => {
-                    self.buffer_1.push(self.process_1(s))
-                },
-                Err(crossbeam_channel::TryRecvError::Disconnected) => panic!("Sender is gone!"),
-                Err(crossbeam_channel::TryRecvError::Empty) => (),
-            }
-        }
-        for conn in &self.in_connections_2 {
-            match conn.channel.try_recv() {
-                Ok(s) => {
-                    // println!(
-                    //     "receiving: gen: {}, prop: {}; self: gen {}, proc: {}.",
-                    //     s.msg_gen,
-                    //     s.msg_prop,
-                    //     self.gen_value,
-                    //     self.proc_value
-                    // );
-                    self.buffer_2.push(self.process_2(s))
-                },
-                Err(crossbeam_channel::TryRecvError::Disconnected) => panic!("Sender is gone!"),
-                Err(crossbeam_channel::TryRecvError::Empty) => (),
-            }
-        }
+
+    fn mode(&self) -> RunMode {
+        RunMode::eq_mode(
+            RunMode::eq_mode(self.pre_module_s1.mode(),self.post_module_s1.mode()),
+            RunMode::eq_mode(self.pre_module_s2.mode(),self.post_module_s2.mode()))
     }
     
-    pub fn send_count(&mut self) {
-        for conn in &self.out_connections_1 {
-            conn.channel.send(self.generate_1()).unwrap();
-        }
-        for conn in &self.out_connections_2 {
-            conn.channel.send(self.generate_2()).unwrap();
-        }
-        // self.gen_value += 1;
+    fn generate(&self) {
+        self.pre_module_s1.feedforward(FwdPreS1 {
+            msg_gen: self.gen_value,
+        });
+        self.pre_module_s2.feedforward(FwdPreS2 {
+            msg_gen: self.gen_value,
+        });
+    }
+
+    fn accept(&mut self) {
+        let mut acc = self.post_module_s1.ffw_accepted().iter().map(|s| FwdEndProduct {
+                msg_gen: s.msg_gen,
+                msg_prop: s.msg_prop,
+                msg_proc: self.proc_value,
+        }).collect();
+        self.stock.append(&mut acc);
+
+        let mut acc = self.post_module_s2.ffw_accepted().iter().map(|s| FwdEndProduct {
+            msg_gen: s.msg_gen,
+            msg_prop: s.msg_prop,
+            msg_proc: self.proc_value,
+        }).collect();
+        self.stock.append(&mut acc);
     }
 
     pub fn print_values(&self) {
         println!("gen: {}, proc: {}.", self.gen_value, self.proc_value);
     }
     
-    pub fn show_1(&self) {
-        println!("Start show_1:");
-        for msg in &self.buffer_1 {
+    pub fn show(&self) {
+        for msg in &self.stock {
             println!(
                 "buffer_1: gen: {}, prop: {}, proc: {}.",
                 msg.msg_gen,
@@ -162,53 +178,5 @@ impl Model {
                 msg.msg_proc
             )
         }
-    }
-
-    pub fn show_2(&self) {
-        println!("Start show_2:");
-        for msg in &self.buffer_2 {
-            println!(
-                "buffer_2: gen: {}, prop: {}, proc: {}.",
-                msg.msg_gen,
-                msg.msg_prop,
-                msg.msg_proc
-            )
-        }
-    }
-    
-}
-
-impl Process2 for Model {
-    fn process_2(&self, s: Signal2Prop) -> Signal2Proc {
-        Signal2Proc {
-            msg_gen: s.msg_gen,
-            msg_prop: s.msg_prop,
-            msg_proc: self.proc_value,
-        }
-    }
-
-    fn add_in_2<T: 'static + Propagate2 + Send>(&mut self, connection: Weak<Mutex<T>>, channel: CCReceiver<Signal2Prop>) {
-        self.in_connections_2.push(
-            InConnectionSet {
-                connection,
-                channel,
-            });
-    }
-}
-
-impl Generate2 for Model {
-    fn generate_2(&self) -> Signal2Gen {
-        Signal2Gen {
-            msg_gen: self.gen_value,
-        }
-    }
-
-    fn add_out_2<T: 'static + PassivePropagate2 + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCSender<Signal2Gen>) {
-        self.out_connections_2.push(
-            OutConnectionSet {
-                connection,
-                channel,
-            }
-        );
     }
 }
