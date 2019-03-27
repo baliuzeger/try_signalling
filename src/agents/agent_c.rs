@@ -1,9 +1,8 @@
 use std::sync::{Mutex, Arc, Weak};
 use crate::connections::{RunningPassiveConnection, PassiveConnection};
-use crate::connections::signal_1::{S1Generator, S1Acceptor};
 use crate::connections::signal_1::{FwdPreS1, FwdPostS1};
 use crate::connections::signal_1::{PreAgentComponentS1, PostAgentComponentS1};
-use crate::agents::{Agent, AgentEvent};
+use crate::agents::{Agent, AgentEvent, Generator, Acceptor};
 use crate::supervisor::{RunMode};
 
 pub struct Model {
@@ -21,7 +20,7 @@ struct FwdEndProduct {
     pub msg_proc: i32,
 }
 
-impl S1Generator for Model {
+impl Generator<FwdPreS1, FwdPostS1> for Model {
     fn add_out_passive_s1<C> (&mut self, connection: Weak<Mutex<C>>)
     where C: 'static + PassiveConnection<FwdPreS1, FwdPostS1> + Send
     {
@@ -29,7 +28,7 @@ impl S1Generator for Model {
     }
 }
 
-impl S1Acceptor for Model {
+impl Acceptor<FwdPreS1, FwdPostS1> for Model {
     fn add_in_s1<C> (&mut self, connection: Weak<Mutex<C>>)
     where C: 'static + PassiveConnection<FwdPreS1, FwdPostS1> + Send
     {

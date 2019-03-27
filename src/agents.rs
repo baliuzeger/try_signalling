@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Weak};
 use std::thread;
 use std::thread::JoinHandle;
 extern crate crossbeam_channel;
@@ -6,7 +6,7 @@ use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use crate::random_sleep;
 use crate::supervisor::{RunMode, Broadcast};
-use crate::connections::RunningPassiveConnection;
+use crate::connections::{PassiveConnection, RunningPassiveConnection};
 
 // pub mod agent_a;
 // pub mod agent_b;
@@ -87,6 +87,17 @@ pub trait Agent {
             }
         }
     }
+}
+
+pub trait Generator<S0: Send, S1: Send>: Agent {
+    fn add_out_passive_s1<C> (&mut self, connection: Weak<Mutex<C>>)
+    where C: 'static + PassiveConnection<S0, S1> + Send;
+    // fn add_out_active<T: 'static + ActivePropagator + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCSender<Signal1Gen>);
+}
+
+pub trait Acceptor<S0: Send, S1: Send>: Agent {
+    fn add_in_s1<C> (&mut self, connection: Weak<Mutex<C>>)
+    where C: 'static + PassiveConnection<S0, S1> + Send;
 }
 
 pub enum AgentEvent {

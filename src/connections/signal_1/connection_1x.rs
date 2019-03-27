@@ -3,23 +3,23 @@ use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc, Weak};
 use crate::connections::{PassiveConnection};
-use crate::connections::signal_1::{S1Acceptor, S1Generator};
 use crate::connections::signal_1::{FwdPreS1, FwdPostS1};
 use crate::connections::signal_1::{ConnectionComponentS1};
 use crate::supervisor::{RunMode};
-use crate::agent_populations::{AgentPopulation, HoldAgents};
+use crate::agent_populations::{HoldAgents};
+use crate::agents::{Generator, Acceptor};
 
 pub struct Model<G, A>
-where G: S1Generator + Send,
-      A: S1Acceptor + Send
+where G: Generator<FwdPreS1, FwdPostS1> + Send,
+      A: Acceptor<FwdPreS1, FwdPostS1> + Send
 {
     module: ConnectionComponentS1<G, A>,
     value: i32,
 }
 
 impl<G, A> PassiveConnection<FwdPreS1, FwdPostS1> for Model<G, A>
-where G: S1Generator + Send,
-      A: S1Acceptor + Send
+where G: Generator<FwdPreS1, FwdPostS1> + Send,
+      A: Acceptor<FwdPreS1, FwdPostS1> + Send
 {
     fn mode(&self) -> RunMode {
         // println!("connection1x mode: {:?}.", self.module.mode());
@@ -50,10 +50,10 @@ where G: S1Generator + Send,
     }
 }
 
-impl<G: S1Generator + Send, A: S1Acceptor + Send> Model<G, A> {
+impl<G: Generator<FwdPreS1, FwdPostS1> + Send, A: Acceptor<FwdPreS1, FwdPostS1> + Send> Model<G, A> {
     pub fn new(pre: Weak<Mutex<G>>, post: Weak<Mutex<A>>, value: i32) -> Arc<Mutex<Model<G, A>>>
-    where G:'static + S1Generator + Send,
-          A:'static + S1Acceptor + Send
+    where G:'static + Generator<FwdPreS1, FwdPostS1> + Send,
+          A:'static + Acceptor<FwdPreS1, FwdPostS1> + Send
     {
         let conn = Arc::new(Mutex::new(Model {
             module: ConnectionComponentS1::new(pre.clone(), post.clone()),
@@ -65,8 +65,8 @@ impl<G: S1Generator + Send, A: S1Acceptor + Send> Model<G, A> {
     }
 
     pub fn new_on_populations<P1, P2>(value: i32, p1: &Arc<Mutex<P1>>, n1: usize, p2: &Arc<Mutex<P2>>, n2: usize) -> Arc<Mutex<Model<G, A>>>
-    where G:'static + S1Generator + Send,
-          A:'static + S1Acceptor + Send,
+    where G:'static + Generator<FwdPreS1, FwdPostS1> + Send,
+          A:'static + Acceptor<FwdPreS1, FwdPostS1> + Send,
           P1: HoldAgents<G>,
           P2: HoldAgents<A>,
     {
