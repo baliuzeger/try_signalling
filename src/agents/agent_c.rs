@@ -118,13 +118,20 @@ impl Model {
     }
 
     fn accept(&mut self) {
-        self.stock.append(
-            self.post_module_s1.ffw_accepted().iter().map(|s| EndProduct {
+        let mut acc = self.post_module_s1.ffw_accepted().iter().map(|s| EndProduct {
                 msg_gen: s.msg_gen,
                 msg_prop: s.msg_prop,
                 msg_proc: self.proc_value,
-            }).collect()
-        );
+        }).collect();
+        self.stock.append(&mut acc);
+        
+        // self.stock.append(
+        //     self.post_module_s1.ffw_accepted().iter().map(|s| EndProduct {
+        //         msg_gen: s.msg_gen,
+        //         msg_prop: s.msg_prop,
+        //         msg_proc: self.proc_value,
+        //     }).collect()
+        // );
     }
 
     pub fn print_values(&self) {

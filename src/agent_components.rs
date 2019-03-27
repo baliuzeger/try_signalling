@@ -61,7 +61,7 @@ where C: PassiveConnection<S0, S1> + Send + ?Sized,
                 InSetFFW {
                     connection: conn.clone(),
                     channel: match unlocked_conn.mode() {
-                        RunMode::Feedforward => None,
+                        RunMode::Idle => None,
                         RunMode::Feedforward => {
                             let (tx, rx) = crossbeam_channel::bounded(1);
                             unlocked_conn.set_post_channel_ffw(Some(tx));

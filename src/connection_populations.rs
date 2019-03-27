@@ -23,11 +23,15 @@ where T: PassiveConnection<S0, S1>,
       S1: Send,
 {
     fn config_run(&mut self, mode: RunMode) {
-        self.connections.iter().map(|conn| conn.lock().unwrap().config_run(mode)).collect();
+        for conn in &self.connections {
+            conn.lock().unwrap().config_run(mode);
+        }
     }
     
     fn config_idle(&mut self) {
-        self.connections.iter().map(|conn| conn.lock().unwrap().config_idle()).collect();
+        for conn in &self.connections {
+            conn.lock().unwrap().config_idle();
+        }
     }
 }
 
