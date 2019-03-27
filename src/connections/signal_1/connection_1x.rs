@@ -8,17 +8,25 @@ use crate::connections::signal_1::{FwdPreS1, FwdPostS1};
 use crate::connections::signal_1::{ConnectionComponentS1};
 use crate::supervisor::{RunMode};
 
-pub struct Model {
-    module: ConnectionComponentS1,
+pub struct Model<G, A>
+where G: S1Generator + Send,
+      A: S1Acceptor + Send
+{
+    module: ConnectionComponentS1<G, A>,
     value: i32,
 }
 
-impl PassiveConnection<FwdPreS1, FwdPostS1> for Model {
+impl<G, A> PassiveConnection<FwdPreS1, FwdPostS1> for Model<G, A>
+where G: S1Generator + Send,
+      A: S1Acceptor + Send
+{
     fn mode(&self) -> RunMode {
+        println!("connection1x mode: {:?}.", self.module.mode());
         self.module.mode()
     }
 
     fn config_run(&mut self, mode: RunMode) {
+        println!("connection_1x config_run.");
         self.module.config_run(mode);
     }
     
@@ -31,23 +39,28 @@ impl PassiveConnection<FwdPreS1, FwdPostS1> for Model {
     }
 
     fn set_pre_channel_ffw(&mut self, channel: Option<CCReceiver<FwdPreS1>>) {
+        println!("connection_1x setting pre_channel.");
         self.module.set_pre_channel_ffw(channel);
     }
     
     fn set_post_channel_ffw(&mut self, channel: Option<CCSender<FwdPostS1>>) {
+        println!("connection_1x setting post_channel.");
         self.module.set_post_channel_ffw(channel);        
     }
 }
 
-impl Model {
-    pub fn new<G, A>(pre: Weak<Mutex<G>>, post: Weak<Mutex<A>>, value: i32) -> Arc<Mutex<Model>>
+impl<G: S1Generator + Send, A: S1Acceptor + Send> Model<G, A> {
+    pub fn new(pre: Weak<Mutex<G>>, post: Weak<Mutex<A>>, value: i32) -> Arc<Mutex<Model<G, A>>>
     where G:'static + S1Generator + Send,
           A:'static + S1Acceptor + Send
     {
-        Arc::new(Mutex::new(Model {
-            module: ConnectionComponentS1::new(pre, post),
+        let conn = Arc::new(Mutex::new(Model {
+            module: ConnectionComponentS1::new(pre.clone(), post.clone()),
             value,
-        }))
+        }));
+        (*pre.upgrade().unwrap().lock().unwrap()).add_out_passive_s1(Arc::downgrade(&conn));
+        post.upgrade().unwrap().lock().unwrap().add_in_s1(Arc::downgrade(&conn));
+        conn
     }
 
     fn refine(&self, s: FwdPreS1) -> FwdPostS1 {

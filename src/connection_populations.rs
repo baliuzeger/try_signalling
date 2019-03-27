@@ -23,6 +23,7 @@ where T: PassiveConnection<S0, S1>,
       S1: Send,
 {
     fn config_run(&mut self, mode: RunMode) {
+        println!("SimplePassiveconnectionpopulation config_run.");
         for conn in &self.connections {
             conn.lock().unwrap().config_run(mode);
         }

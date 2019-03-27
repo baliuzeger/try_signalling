@@ -22,15 +22,17 @@ struct FwdEndProduct {
 }
 
 impl S1Generator for Model {
-    fn add_out_passive_s1 (&mut self, connection: Weak<Mutex<dyn PassiveConnection<FwdPreS1, FwdPostS1> + Send>>)
+    fn add_out_passive_s1<C> (&mut self, connection: Weak<Mutex<C>>)
+    where C: 'static + PassiveConnection<FwdPreS1, FwdPostS1> + Send
     {
         self.pre_module_s1.add_connection(connection);
-        
     }
 }
 
 impl S1Acceptor for Model {
-    fn add_in_s1(&mut self, connection: Weak<Mutex<dyn PassiveConnection<FwdPreS1, FwdPostS1> + Send>>) {
+    fn add_in_s1<C> (&mut self, connection: Weak<Mutex<C>>)
+    where C: 'static + PassiveConnection<FwdPreS1, FwdPostS1> + Send
+    {
         self.post_module_s1.add_connection(connection);
     }
 }

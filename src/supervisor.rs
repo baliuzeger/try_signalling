@@ -10,7 +10,7 @@ use crate::connection_populations::{ConnectionPopulation};
 // use crate::connections::PassiveConnection;
 use crate::random_sleep;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum RunMode {
     Idle,
     Feedforward,
