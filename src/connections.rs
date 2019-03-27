@@ -32,13 +32,13 @@ impl RunningPassiveConnection {
     }    
 }
 
-pub trait PassiveConnection {
+pub trait PassiveConnection<S0: Send, S1: Send> {
     fn mode(&self) -> RunMode;
     fn config_run(&mut self, mode: RunMode);
-    fn set_pre_channel_ffw(&mut self, channel: Option<CCReceiver<>>) // cannot avoid generic type.....
     fn config_idle(&mut self);
     fn propagate(&self);
-    
+    fn set_pre_channel_ffw(&mut self, channel: Option<CCReceiver<S0>>);
+    fn set_post_channel_ffw(&mut self, channel: Option<CCSender<S1>>);
     fn run(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>){
         loop {
             random_sleep();

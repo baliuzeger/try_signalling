@@ -24,14 +24,14 @@ pub struct FwdPostS1 {
 //     pub msg_prop: i32,
 // }
 
-pub trait S1PassivePropagator: PassiveConnection + S1Propagator {}
+// pub trait S1PassivePropagator: PassiveConnection + S1Propagator {}
+
+// pub trait S1Propagator {
+// }
 
 pub trait S1Generator {
     fn add_out_passive_s1 (&mut self, connection: Weak<Mutex<dyn S1PassivePropagator + Send>>);
     // fn add_out_active<T: 'static + ActivePropagator + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCSender<Signal1Gen>);
-}
-
-pub trait S1Propagator {
 }
 
 pub trait S1Acceptor {

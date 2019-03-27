@@ -1,4 +1,6 @@
 use std::sync::{Arc, Mutex, Weak};
+use std::marker;
+use std::marker::PhantomData;
 extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
@@ -8,14 +10,24 @@ use crate::connections::{PassiveConnection, RunningPassiveConnection};
 pub mod pre_component;
 pub mod post_component;
 
-pub struct ComponentIdle<C: PassiveConnection + Send + ?Sized> {
-    connections: Vec<Weak<Mutex<C>>>
+pub struct ComponentIdle<C, S0, S1>
+where C: PassiveConnection<S0, S1> + Send + ?Sized,
+      S0: Send,
+      S1: Send,
+{
+    connections: Vec<Weak<Mutex<C>>>,
+    phantom: PhantomData<(S0, S1)>,
 }
 
-impl<C: PassiveConnection + Send> ComponentIdle<C> {
-    fn new() -> ComponentIdle<C> {
+impl<C, S0, S1> ComponentIdle<C, S0, S1>
+where C: PassiveConnection<S0, S1> + Send + ?Sized,
+      S0: Send,
+      S1: Send,
+{
+    fn new() -> ComponentIdle<C, S0, S1> {
         ComponentIdle {
             connections: Vec::new(),
+            phantom: PhantomData {},
         }
     }
 
@@ -23,7 +35,7 @@ impl<C: PassiveConnection + Send> ComponentIdle<C> {
         self.connections.push(connection);
     }
 
-    fn make_ffw_pre<S: Send>(&self) -> PreComponentFFW<C, S> {
+    fn make_ffw_pre<S: Send>(&self) -> PreComponentFFW<C, S0, S1> {
         PreComponentFFW {
             connections: self.connections.iter().map(|conn| {
                 let unlocked_conn = conn.upgrade().unwrap().lock().unwrap();
@@ -39,6 +51,7 @@ impl<C: PassiveConnection + Send> ComponentIdle<C> {
                     }
                 }
             }).collect(),
+            phantom: PhantomData {},       
         }
     }
 
@@ -49,26 +62,37 @@ impl<C: PassiveConnection + Send> ComponentIdle<C> {
                 channel: match conn.upgrade().lock().unwrap().mode() {
                     RunMode::Feedforward => None,
                     RunMode::Feedforward => {
-x                        let (tx, rx) = crossbeam_channel::bounded(1);
+                        let (tx, rx) = crossbeam_channel::bounded(1);
                         conn.set_post_channel(Some(tx));
                         Some(rx)
                     },
                 }
             }).collect(),
+            phantom: PhantomData {},
         }
     }
 }
 
-pub struct PreComponentFFW<C: PassiveConnection + Send + ?Sized, S: Send> {
-    connections: Vec<OutSetFFW<C, S>>,
+pub struct PreComponentFFW<C, S0, S1>
+where C: PassiveConnection<S0, S1> + Send + ?Sized,
+      S0: Send,
+      S1: Send,
+{
+    connections: Vec<OutSetFFW<C, S0>>,
+    phantom: PhantomData<S1>,
 }
 
-impl<C: PassiveConnection + Send, S: Send> PreComponentFFW<C, S> {
-    pub fn make_idle(&self) -> ComponentIdle<C> {
+impl<C, S0, S1> PreComponentFFW<C, S0, S1>
+where C: PassiveConnection<S0, S1> + Send + ?Sized,
+      S0: Send,
+      S1: Send,
+{
+    pub fn make_idle(&self) -> ComponentIdle<C, S0, S1> {
         ComponentIdle {
             connections: self.connections.iter()
                 .map(|set| Arc::downgrade(set.connection.upgrade().expect("no object in Weak<conection>!")))
                 .collect(),
+            phantom: PhantomData {},
         }
     }
 
@@ -81,7 +105,7 @@ impl<C: PassiveConnection + Send, S: Send> PreComponentFFW<C, S> {
         }).collect();
     }
     
-    pub fn feedforward(&self, s: S) {
+    pub fn feedforward(&self, s: S0) {
         for set in &self.connections {
             match &set.channel {
                 None => (),
@@ -91,12 +115,30 @@ impl<C: PassiveConnection + Send, S: Send> PreComponentFFW<C, S> {
     }
 }
 
-pub struct PostComponentFFW<C: PassiveConnection + Send + ?Sized, R: Send> {
-    connections: Vec<InSetFFW<C, R>>,
+pub struct PostComponentFFW<C, S0, S1>
+where C: PassiveConnection<S0, S1> + Send + ?Sized,
+      S0: Send,
+      S1: Send,
+{
+    connections: Vec<InSetFFW<C, S1>>,
+    phantom: PhantomData<S0>,
 }
 
-impl<C: PassiveConnection + Send, R: Send> PostComponentFFW<C, R> {
-    fn accepted(&self) -> Vec<R> {
+impl<C, S0, S1> PostComponentFFW<C, S0, S1>
+where C: PassiveConnection<S0, S1> + Send + ?Sized,
+      S0: Send,
+      S1: Send,
+{
+    pub fn make_idle(&self) -> ComponentIdle<C, S0, S1> {
+        ComponentIdle {
+            connections: self.connections.iter()
+                .map(|set| Arc::downgrade(set.connection.upgrade().expect("no object in Weak<conection>!")))
+                .collect(),
+            phantom: PhantomData {},
+        }
+    }
+
+    fn accepted(&self) -> Vec<S1> {
         self.connections.iter()
             .filter_map(|conn| {
                 match conn.channel {
