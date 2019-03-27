@@ -29,7 +29,7 @@ where G: Send + ?Sized,
         match (mode, &self.config) {
             (RunMode::Idle, _) => println!("config_run for mode Idle, no effect."),
             (RunMode::Feedforward, DeviceMode::Idle(ms)) => {
-                println!("ConnectionComponent config_run to FFW.");
+                // println!("ConnectionComponent config_run to FFW.");
                 self.config = DeviceMode::Feedforward(ms.make_ffw());
             },
             (_, _) => panic!("call fn config_run when not DeviceMode::Idle!"),
@@ -44,7 +44,7 @@ where G: Send + ?Sized,
     }
     
     pub fn set_pre_channel_ffw(&mut self, pre_channel: Option<CCReceiver<R>>) {
-        println!("connection_component setting pre_channel.");
+        // println!("connection_component setting pre_channel.");
         match &mut self.config {
             DeviceMode::Feedforward(m) => m.set_pre_channel(pre_channel),
             _ => panic!("call fn set_pre_ffw when not DeviceMode::Feedforward!")
@@ -52,7 +52,7 @@ where G: Send + ?Sized,
     }
 
     pub fn set_post_channel_ffw(&mut self, post_channel: Option<CCSender<S>>) {
-        println!("connection_component setting post_channel.");
+        // println!("connection_component setting post_channel.");
         match &mut self.config {
             DeviceMode::Feedforward(m) => m.set_post_channel(post_channel),
             _ => panic!("call fn set_post_ffw when not DeviceMode::Feedforward!"),
@@ -91,7 +91,7 @@ impl<G: Send + ?Sized, A: Send + ?Sized> ComponentIdle<G, A> {
     where R: Send,
           S: Send
     {
-        println!("connection ComponentIdle make_ffw.");
+        // println!("connection ComponentIdle make_ffw.");
         ComponentFFW {
             pre: self.pre.clone(),
             post: self.post.clone(),
@@ -117,12 +117,12 @@ impl<G: Send + ?Sized, A: Send + ?Sized, R: Send, S: Send> ComponentFFW<G, A, R,
     }
 
     fn set_pre_channel(&mut self, pre_channel: Option<CCReceiver<R>>) {
-        println!("connection_component got pre_channel.");
+        // println!("connection_component got pre_channel.");
         self.pre_channel = pre_channel;
     }
 
     fn set_post_channel(&mut self, post_channel: Option<CCSender<S>>) {
-        println!("connection_component got post_channel.");
+        // println!("connection_component got post_channel.");
         self.post_channel = post_channel;
     }
     

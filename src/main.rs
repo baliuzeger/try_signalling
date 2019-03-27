@@ -44,6 +44,10 @@ fn main() {
     let ag2 = Arc::downgrade(&pp_agnt_a.lock().unwrap().agent_by_id(2));
     pp_conn_x.lock().unwrap().add_connection(Connection1x::new(ag1, ag2, 1));
 
+    let ag1 = Arc::downgrade(&pp_agnt_a.lock().unwrap().agent_by_id(1));
+    let ag2 = Arc::downgrade(&pp_agnt_a.lock().unwrap().agent_by_id(2));
+    pp_conn_x.lock().unwrap().add_connection(Connection1x::new(ag1, ag2, 1));
+
     sp0.run(RunMode::Feedforward, 10);
 
     pp_agnt_a.lock().unwrap()

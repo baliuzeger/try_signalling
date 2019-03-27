@@ -35,12 +35,12 @@ where C: PassiveConnection<S0, S1> + Send + ?Sized,
     }
 
     fn make_ffw_pre<S: Send>(&self) -> PreComponentFFW<C, S0, S1> {
-        println!("agent ComponentIdle config ffw_pre.");
+        // println!("agent ComponentIdle config ffw_pre.");
         PreComponentFFW {
             connections: self.connections.iter().map(|conn| {
                 let arc = conn.clone().upgrade().unwrap();
                 let mut unlocked_conn = arc.lock().unwrap();
-                println!("mode of conn, call by Agent ComponentFFW: {:?}", unlocked_conn.mode());
+                // println!("mode of conn, call by Agent ComponentFFW: {:?}", unlocked_conn.mode());
                 OutSetFFW {
                     connection: conn.clone(),
                     channel: match unlocked_conn.mode() {
@@ -58,7 +58,7 @@ where C: PassiveConnection<S0, S1> + Send + ?Sized,
     }
 
     fn make_ffw_post<S: Send>(&self) -> PostComponentFFW<C, S0, S1> {
-        println!("agent ComponentIdle config ffw_post.");
+        // println!("agent ComponentIdle config ffw_post.");
         PostComponentFFW {
             connections: self.connections.iter().map(|conn| {
                 let arc = conn.clone().upgrade().unwrap();

@@ -21,12 +21,12 @@ where G: S1Generator + Send,
       A: S1Acceptor + Send
 {
     fn mode(&self) -> RunMode {
-        println!("connection1x mode: {:?}.", self.module.mode());
+        // println!("connection1x mode: {:?}.", self.module.mode());
         self.module.mode()
     }
 
     fn config_run(&mut self, mode: RunMode) {
-        println!("connection_1x config_run.");
+        // println!("connection_1x config_run.");
         self.module.config_run(mode);
     }
     
@@ -39,12 +39,12 @@ where G: S1Generator + Send,
     }
 
     fn set_pre_channel_ffw(&mut self, channel: Option<CCReceiver<FwdPreS1>>) {
-        println!("connection_1x setting pre_channel.");
+        // println!("connection_1x setting pre_channel.");
         self.module.set_pre_channel_ffw(channel);
     }
     
     fn set_post_channel_ffw(&mut self, channel: Option<CCSender<FwdPostS1>>) {
-        println!("connection_1x setting post_channel.");
+        // println!("connection_1x setting post_channel.");
         self.module.set_post_channel_ffw(channel);        
     }
 }
@@ -58,7 +58,7 @@ impl<G: S1Generator + Send, A: S1Acceptor + Send> Model<G, A> {
             module: ConnectionComponentS1::new(pre.clone(), post.clone()),
             value,
         }));
-        (*pre.upgrade().unwrap().lock().unwrap()).add_out_passive_s1(Arc::downgrade(&conn));
+        pre.upgrade().unwrap().lock().unwrap().add_out_passive_s1(Arc::downgrade(&conn));
         post.upgrade().unwrap().lock().unwrap().add_in_s1(Arc::downgrade(&conn));
         conn
     }
