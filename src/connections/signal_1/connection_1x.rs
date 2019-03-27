@@ -7,6 +7,7 @@ use crate::connections::signal_1::{S1Acceptor, S1Generator};
 use crate::connections::signal_1::{FwdPreS1, FwdPostS1};
 use crate::connections::signal_1::{ConnectionComponentS1};
 use crate::supervisor::{RunMode};
+use crate::agent_populations::{AgentPopulation, HoldAgents};
 
 pub struct Model<G, A>
 where G: S1Generator + Send,
@@ -63,7 +64,16 @@ impl<G: S1Generator + Send, A: S1Acceptor + Send> Model<G, A> {
         conn
     }
 
-    //pub fn new_on_populations()
+    pub fn new_on_populations<P1, P2>(value: i32, p1: &Arc<Mutex<P1>>, n1: usize, p2: &Arc<Mutex<P2>>, n2: usize) -> Arc<Mutex<Model<G, A>>>
+    where G:'static + S1Generator + Send,
+          A:'static + S1Acceptor + Send,
+          P1: HoldAgents<G>,
+          P2: HoldAgents<A>,
+    {
+        let ag1 = Arc::downgrade(&p1.lock().unwrap().agent_by_id(n1));
+        let ag2 = Arc::downgrade(&p2.lock().unwrap().agent_by_id(n2));
+        Model::new(ag1, ag2, value)
+    }
 
     fn refine(&self, s: FwdPreS1) -> FwdPostS1 {
         FwdPostS1 {

@@ -8,7 +8,7 @@ use try_signalling::supervisor::{Supervisor, RunMode};
 // use try_signalling::agents::agent_a::Model as AAgent;
 // use try_signalling::agents::agent_b::Model as BAgent;
 use try_signalling::agents::agent_c::Model as CAgent;
-use try_signalling::agent_populations::SimplePopulation;
+use try_signalling::agent_populations::{HoldAgents, SimplePopulation};
 use try_signalling::connection_populations::SimplePassiveConnectionPopulation;
 use try_signalling::connections::signal_1::connection_1x::Model as Connection1x;
 use try_signalling::connections::signal_1::{FwdPreS1, FwdPostS1};
@@ -40,29 +40,13 @@ fn main() {
         Arc::clone(&pp_conn_x)
     );
 
-    let ag1 = Arc::downgrade(&pp_agnt_a.lock().unwrap().agent_by_id(0));
-    let ag2 = Arc::downgrade(&pp_agnt_a.lock().unwrap().agent_by_id(2));
-    pp_conn_x.lock().unwrap().add_connection(Connection1x::new(ag1, ag2, 1));
-
-    let ag1 = Arc::downgrade(&pp_agnt_a.lock().unwrap().agent_by_id(1));
-    let ag2 = Arc::downgrade(&pp_agnt_a.lock().unwrap().agent_by_id(2));
-    pp_conn_x.lock().unwrap().add_connection(Connection1x::new(ag1, ag2, 2));
-
+    pp_conn_x.lock().unwrap().add_connection(Connection1x::new_on_populations(1, &pp_agnt_a, 0, &pp_agnt_a, 2));
+    pp_conn_x.lock().unwrap().add_connection(Connection1x::new_on_populations(1, &pp_agnt_a, 1, &pp_agnt_a, 2));
+    
     sp0.run(RunMode::Feedforward, 10);
 
     pp_agnt_a.lock().unwrap()
         .agent_by_id(2)
         .lock().unwrap()
         .show();
-
-    pp_agnt_a.lock().unwrap()
-        .agent_by_id(0)
-        .lock().unwrap()
-        .show();
-
-    pp_agnt_a.lock().unwrap()
-        .agent_by_id(1)
-        .lock().unwrap()
-        .show();
-    
 }

@@ -94,7 +94,10 @@ pub trait AgentPopulation {
             }
         }
     }    
-    
+}
+
+pub trait HoldAgents<T: Agent + Send> {
+    fn agent_by_id(&self, n: usize) -> Arc<Mutex<T>>;
 }
 
 pub struct SimplePopulation<T: Agent> {
@@ -116,18 +119,13 @@ impl<T: 'static + Agent + Send> AgentPopulation for SimplePopulation<T> {
 
     fn running_agents(&self) -> Vec<RunningAgent> {
         self.agents.iter().map(|agnt| RunningAgent::new(Arc::clone(&agnt))).collect()
-
-        // for agnt in &self.agents {
-        //     let (tx_agnt_report, rx_agnt_report) = crossbeam_channel::bounded(1);
-        //     let (tx_agnt_confirm, rx_agnt_confirm) = crossbeam_channel::bounded(1);
-        //     let running_agnt = Arc::clone(agnt);
-        //     running_agents.push(RunningSet {
-        //         instance: thread::spawn(move || {running_agnt.lock().unwrap().run(rx_agnt_confirm, tx_agnt_report)}),
-        //         report: rx_agnt_report,
-        //         confirm: tx_agnt_confirm,
-        //     });
-        // }
     }
+}
+
+impl<T: Agent + Send> HoldAgents<T> for SimplePopulation<T> {
+    fn agent_by_id(&self, n: usize) -> Arc<Mutex<T>> {
+        Arc::clone(&self.agents[n])
+    }    
 }
 
 impl<T: 'static + Agent + Send>  SimplePopulation<T> {
@@ -140,9 +138,4 @@ impl<T: 'static + Agent + Send>  SimplePopulation<T> {
     pub fn add_agent(&mut self, agnt: Arc<Mutex<T>>) {
         self.agents.push(agnt);
     }
-
-    
-    pub fn agent_by_id(&self, n: usize) -> Arc<Mutex<T>> {
-        Arc::clone(&self.agents[n])
-    }    
 }

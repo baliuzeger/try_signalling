@@ -3,6 +3,7 @@ use crate::connections::{PassiveConnection};
 use crate::connection_component::{ConnectionComponent};
 use crate::agent_components::pre_component::{PreComponent};
 use crate::agent_components::post_component::{PostComponent};
+use crate::agents::Agent;
 
 pub mod connection_1x;
 
@@ -31,13 +32,13 @@ pub struct FwdPostS1 {
 // pub trait S1Propagator {
 // }
 
-pub trait S1Generator {
+pub trait S1Generator: Agent {
     fn add_out_passive_s1<C> (&mut self, connection: Weak<Mutex<C>>)
     where C: 'static + PassiveConnection<FwdPreS1, FwdPostS1> + Send;
     // fn add_out_active<T: 'static + ActivePropagator + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCSender<Signal1Gen>);
 }
 
-pub trait S1Acceptor {
+pub trait S1Acceptor: Agent {
     fn add_in_s1<C> (&mut self, connection: Weak<Mutex<C>>)
     where C: 'static + PassiveConnection<FwdPreS1, FwdPostS1> + Send;
 }
