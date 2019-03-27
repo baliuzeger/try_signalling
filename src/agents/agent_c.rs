@@ -4,19 +4,18 @@ use crate::connections::signal_1::{S1Generator, S1Acceptor};
 use crate::connections::signal_1::{FwdPreS1, FwdPostS1};
 use crate::connections::signal_1::{PreAgentComponentS1, PostAgentComponentS1};
 use crate::agents::{Agent, AgentEvent};
-use crate::supervisor::{RunMode, DeviceMode};
+use crate::supervisor::{RunMode};
 
 pub struct Model {
-    config: RunMode,
     pre_module_s1: PreAgentComponentS1,
     post_module_s1: PostAgentComponentS1,
     gen_value: i32,
     proc_value: i32,
     event_cond: Option<i32>,
-    stock: Vec<EndProduct>,
+    stock: Vec<FwdEndProduct>,
 }
 
-struct EndProduct {
+struct FwdEndProduct {
     pub msg_gen: i32,
     pub msg_prop: i32,
     pub msg_proc: i32,
@@ -40,7 +39,7 @@ impl Agent for Model {
     fn config_run(&mut self, mode: RunMode) {
         match (mode, self.mode()) {
             (RunMode::Idle, _) => println!("config_run for mode Idle, no effect."),
-            (mi, RunMode::Idle) => {
+            (_, RunMode::Idle) => {
                 self.pre_module_s1.config_run(mode);
                 self.post_module_s1.config_run(mode);
             },
@@ -96,7 +95,6 @@ impl Model {
     pub fn new(gen_value: i32, proc_value: i32, event_cond: Option<i32>) -> Arc<Mutex<Model>> {
         Arc::new(Mutex::new(
             Model{
-                config: RunMode::Idle,
                 pre_module_s1: PreAgentComponentS1::new(),
                 post_module_s1: PostAgentComponentS1::new(),
                 gen_value,
@@ -118,7 +116,7 @@ impl Model {
     }
 
     fn accept(&mut self) {
-        let mut acc = self.post_module_s1.ffw_accepted().iter().map(|s| EndProduct {
+        let mut acc = self.post_module_s1.ffw_accepted().iter().map(|s| FwdEndProduct {
                 msg_gen: s.msg_gen,
                 msg_prop: s.msg_prop,
                 msg_proc: self.proc_value,
@@ -126,7 +124,7 @@ impl Model {
         self.stock.append(&mut acc);
         
         // self.stock.append(
-        //     self.post_module_s1.ffw_accepted().iter().map(|s| EndProduct {
+        //     self.post_module_s1.ffw_accepted().iter().map(|s| FwdEndProduct {
         //         msg_gen: s.msg_gen,
         //         msg_prop: s.msg_prop,
         //         msg_proc: self.proc_value,
@@ -148,16 +146,4 @@ impl Model {
             )
         }
     }
-}
-
-struct BkwdProcSignal1 {
-    pub msg_gen: i32,
-    pub msg_prop: i32,
-    pub msg_proc: i32,
-}
-
-struct FrwdProcSignal1 {
-    pub msg_gen: i32,
-    pub msg_prop: i32,
-    pub msg_proc: i32,
 }

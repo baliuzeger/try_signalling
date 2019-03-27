@@ -22,7 +22,7 @@ where G: Send + ?Sized,
     }
 
     pub fn mode(&self) -> RunMode {
-        RunMode::mode_from_device(self.config)
+        RunMode::mode_from_device(&self.config)
     }
 
     pub fn config_run(&mut self, mode: RunMode) {
@@ -36,35 +36,35 @@ where G: Send + ?Sized,
     pub fn config_idle(&mut self) {
         match &self.config {
             DeviceMode::Feedforward(m) => self.config = DeviceMode::Idle(m.make_idle()),
-            DeviceMode => panic!("call fn config_idle when DeviceMode::Idle!"),
+            DeviceMode::Idle(_) => panic!("call fn config_idle when DeviceMode::Idle!"),
         }
     }
     
     pub fn set_pre_channel_ffw(&mut self, pre_channel: Option<CCReceiver<R>>) {
-        match &self.config {
+        match &mut self.config {
             DeviceMode::Feedforward(m) => m.set_pre_channel(pre_channel),
             _ => panic!("call fn set_pre_ffw when not DeviceMode::Feedforward!")
         }
     }
 
     pub fn set_post_channel_ffw(&mut self, post_channel: Option<CCSender<S>>) {
-        match &self.config {
+        match &mut self.config {
             DeviceMode::Feedforward(m) => m.set_post_channel(post_channel),
             _ => panic!("call fn set_post_ffw when not DeviceMode::Feedforward!"),
         }
     }
     
-    pub fn import(&mut self) -> R {
+    pub fn import(&self) -> R {
         match &self.config {
             DeviceMode::Feedforward(m) => m.import(),
-            DeviceMode => panic!("call fn import when DeviceMode::Idle!"),
+            DeviceMode::Idle(_) => panic!("call fn import when DeviceMode::Idle!"),
         }
     }
 
     pub fn export(&self, s: S) {
         match &self.config {
             DeviceMode::Feedforward(m) => m.export(s),
-            DeviceMode => panic!("call fn export when DeviceMode::Idle!"),
+            DeviceMode::Idle(_) => panic!("call fn export when DeviceMode::Idle!"),
         }
     }    
 }
@@ -118,11 +118,17 @@ impl<G: Send + ?Sized, A: Send + ?Sized, R: Send, S: Send> ComponentFFW<G, A, R,
         self.post_channel = post_channel;
     }
     
-    fn import(&mut self) -> R {
-        self.pre_channel.expect("FFW connection has no pre_channel!").recv().unwrap()
+    fn import(&self) -> R {
+        match &self.pre_channel {
+            None => panic!("FFW connection has no pre_channel when call import!"),
+            Some(ch) => ch.recv().unwrap(),
+        }
     }
 
     fn export(&self, s: S) {
-        self.post_channel.expect("FFW connection has no post_channel!").send(s).unwrap();
+        match &self.post_channel {
+            None => panic!("FFW connection has no post_channel when call export!"),
+            Some(ch) => ch.send(s).unwrap(),
+        }
     }
 }

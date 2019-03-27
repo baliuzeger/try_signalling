@@ -6,10 +6,12 @@ use crate::agent_components::post_component::{PostComponent};
 
 pub mod connection_1x;
 
+#[derive(Copy, Clone)]
 pub struct FwdPreS1 {
     pub msg_gen: i32
 }
 
+#[derive(Copy, Clone)]
 pub struct FwdPostS1 {
     pub msg_gen: i32,
     pub msg_prop: i32,

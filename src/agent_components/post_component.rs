@@ -5,8 +5,8 @@ use crate::connections::PassiveConnection;
 
 pub struct PostComponent<C, S0, S1>
 where C: 'static + PassiveConnection<S0, S1> + Send + ?Sized,
-      S0: Send,
-      S1: Send,
+      S0: Send + Copy,
+      S1: Send + Copy,
 {
     config: DeviceMode<ComponentIdle<C, S0, S1>,
                        PostComponentFFW<C, S0, S1>>
@@ -14,8 +14,8 @@ where C: 'static + PassiveConnection<S0, S1> + Send + ?Sized,
 
 impl<C, S0, S1> PostComponent<C, S0, S1>
 where C: 'static + PassiveConnection<S0, S1> + Send + ?Sized,
-      S0: Send,
-      S1: Send,
+      S0: Send + Copy,
+      S1: Send + Copy,
 {
     pub fn new() -> PostComponent<C, S0, S1> {
         PostComponent {
@@ -24,11 +24,11 @@ where C: 'static + PassiveConnection<S0, S1> + Send + ?Sized,
     }
 
     pub fn mode(&self) -> RunMode {
-        RunMode::mode_from_device(self.config)
+        RunMode::mode_from_device(&self.config)
     }
     
     pub fn ffw_accepted(&self) -> Vec<S1> {
-        match &mut self.config {
+        match &self.config {
             DeviceMode::Feedforward(m) => m.accepted(),
             DeviceMode::Idle(_) => panic!("PostComponent is Idle when .accepted called!"),
         }

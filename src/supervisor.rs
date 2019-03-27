@@ -10,13 +10,14 @@ use crate::connection_populations::{ConnectionPopulation};
 // use crate::connections::PassiveConnection;
 use crate::random_sleep;
 
+#[derive(Copy, Clone)]
 pub enum RunMode {
     Idle,
     Feedforward,
 }
 
 impl RunMode {
-    pub fn mode_from_device<I, F>(m: DeviceMode<I, F>) -> RunMode {
+    pub fn mode_from_device<I, F>(m: &DeviceMode<I, F>) -> RunMode {
         match m {
             DeviceMode::Idle(_) => RunMode::Idle,
             DeviceMode::Feedforward(_) => RunMode::Feedforward,
@@ -75,10 +76,10 @@ impl Supervisor {
     
     pub fn run(&self, mode: RunMode, total_steps: u32) {
         // this version make all connections (only passive supported) into threads controlled by pre-agents.
-        for (_, pp) in self.connection_populations {
+        for (_, pp) in &self.connection_populations {
             pp.lock().unwrap().config_run(mode);
         }
-        for (_, pp) in self.agent_populations {
+        for (_, pp) in &self.agent_populations {
             pp.lock().unwrap().config_run(mode);
         }
         // println!("start making threads for populations.");

@@ -5,8 +5,8 @@ use crate::connections::{RunningPassiveConnection, PassiveConnection};
 
 pub struct PreComponent<C, S0, S1>
 where C: 'static + PassiveConnection<S0, S1> + Send + ?Sized,
-      S0: Send,
-      S1: Send,
+      S0: Send + Copy,
+      S1: Send + Copy,
 {
     config: DeviceMode<ComponentIdle<C, S0, S1>,
                        PreComponentFFW<C, S0, S1>>
@@ -14,8 +14,8 @@ where C: 'static + PassiveConnection<S0, S1> + Send + ?Sized,
 
 impl<C, S0, S1> PreComponent<C, S0, S1>
 where C: 'static +PassiveConnection<S0, S1> + Send + ?Sized,
-      S0: Send,
-      S1: Send,
+      S0: Send + Copy,
+      S1: Send + Copy,
 {
     pub fn new() -> PreComponent<C, S0, S1> {
         PreComponent {
@@ -24,7 +24,7 @@ where C: 'static +PassiveConnection<S0, S1> + Send + ?Sized,
     }
 
     pub fn mode(&self) -> RunMode {
-        RunMode::mode_from_device(self.config)
+        RunMode::mode_from_device(&self.config)
     }
     
     pub fn add_connection(&mut self, connection: Weak<Mutex<C>>) {

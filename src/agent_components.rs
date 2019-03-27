@@ -11,8 +11,8 @@ pub mod post_component;
 
 pub struct ComponentIdle<C, S0, S1>
 where C: PassiveConnection<S0, S1> + Send + ?Sized,
-      S0: Send,
-      S1: Send,
+      S0: Send + Copy,
+      S1: Send + Copy,
 {
     connections: Vec<Weak<Mutex<C>>>,
     phantom: PhantomData<(S0, S1)>,
@@ -20,8 +20,8 @@ where C: PassiveConnection<S0, S1> + Send + ?Sized,
 
 impl<C, S0, S1> ComponentIdle<C, S0, S1>
 where C: PassiveConnection<S0, S1> + Send + ?Sized,
-      S0: Send,
-      S1: Send,
+      S0: Send + Copy,
+      S1: Send + Copy,
 {
     fn new() -> ComponentIdle<C, S0, S1> {
         ComponentIdle {
@@ -37,7 +37,8 @@ where C: PassiveConnection<S0, S1> + Send + ?Sized,
     fn make_ffw_pre<S: Send>(&self) -> PreComponentFFW<C, S0, S1> {
         PreComponentFFW {
             connections: self.connections.iter().map(|conn| {
-                let unlocked_conn = conn.upgrade().unwrap().lock().unwrap();
+                let arc = conn.clone().upgrade().unwrap();
+                let mut unlocked_conn = arc.lock().unwrap();
                 OutSetFFW {
                     connection: conn.clone(),
                     channel: match unlocked_conn.mode() {
@@ -57,7 +58,8 @@ where C: PassiveConnection<S0, S1> + Send + ?Sized,
     fn make_ffw_post<S: Send>(&self) -> PostComponentFFW<C, S0, S1> {
         PostComponentFFW {
             connections: self.connections.iter().map(|conn| {
-                let unlocked_conn = conn.upgrade().unwrap().lock().unwrap();
+                let arc = conn.clone().upgrade().unwrap();
+                let mut unlocked_conn = arc.lock().unwrap();
                 InSetFFW {
                     connection: conn.clone(),
                     channel: match unlocked_conn.mode() {
@@ -77,8 +79,8 @@ where C: PassiveConnection<S0, S1> + Send + ?Sized,
 
 pub struct PreComponentFFW<C, S0, S1>
 where C: 'static + PassiveConnection<S0, S1> + Send + ?Sized,
-      S0: Send,
-      S1: Send,
+      S0: Send + Copy,
+      S1: Send + Copy,
 {
     connections: Vec<OutSetFFW<C, S0>>,
     phantom: PhantomData<S1>,
@@ -86,8 +88,8 @@ where C: 'static + PassiveConnection<S0, S1> + Send + ?Sized,
 
 impl<C, S0, S1> PreComponentFFW<C, S0, S1>
 where C: 'static + PassiveConnection<S0, S1> + Send + ?Sized,
-      S0: Send,
-      S1: Send,
+      S0: Send + Copy,
+      S1: Send + Copy,
 {
     pub fn make_idle(&self) -> ComponentIdle<C, S0, S1> {
         ComponentIdle {
@@ -117,8 +119,8 @@ where C: 'static + PassiveConnection<S0, S1> + Send + ?Sized,
 
 pub struct PostComponentFFW<C, S0, S1>
 where C: PassiveConnection<S0, S1> + Send + ?Sized,
-      S0: Send,
-      S1: Send,
+      S0: Send + Copy,
+      S1: Send + Copy,
 {
     connections: Vec<InSetFFW<C, S1>>,
     phantom: PhantomData<S0>,
@@ -126,8 +128,8 @@ where C: PassiveConnection<S0, S1> + Send + ?Sized,
 
 impl<C, S0, S1> PostComponentFFW<C, S0, S1>
 where C: PassiveConnection<S0, S1> + Send + ?Sized,
-      S0: Send,
-      S1: Send,
+      S0: Send + Copy,
+      S1: Send + Copy,
 {
     pub fn make_idle(&self) -> ComponentIdle<C, S0, S1> {
         ComponentIdle {
@@ -139,7 +141,7 @@ where C: PassiveConnection<S0, S1> + Send + ?Sized,
     fn accepted(&self) -> Vec<S1> {
         self.connections.iter()
             .filter_map(|conn| {
-                match conn.channel {
+                match &conn.channel {
                     None => None,
                     Some(rx) => Some(rx.try_iter()),
                 }
