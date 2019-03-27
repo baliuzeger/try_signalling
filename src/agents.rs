@@ -19,14 +19,14 @@ pub struct RunningAgent {
 }
 
 impl RunningAgent {
-    pub fn new<T>(device: Arc<Mutex<T>>, mode: RunMode) -> RunningAgent
+    pub fn new<T>(device: Arc<Mutex<T>>) -> RunningAgent
     where T: 'static + Agent + Send + ?Sized
     {
         // for strict ordering of agent-connection_prop, bounded(1) is chosen.
         let (tx_report, rx_report) = crossbeam_channel::bounded(1);
         let (tx_confirm, rx_confirm) = crossbeam_channel::bounded(1);
         RunningAgent {
-            instance: thread::spawn(move || {device.lock().unwrap().run(rx_confirm, tx_report, mode)}),
+            instance: thread::spawn(move || {device.lock().unwrap().run(rx_confirm, tx_report)}),
             report: rx_report,
             confirm: tx_confirm,
         }

@@ -18,8 +18,10 @@ pub struct RunningPassiveConnection {
 }
 
 impl RunningPassiveConnection {
-    pub fn new<T>(device: Arc<Mutex<T>>) -> RunningPassiveConnection
-    where T: 'static + PassiveConnection + Send + ?Sized
+    pub fn new<T, S1, S2>(device: Arc<Mutex<T>>) -> RunningPassiveConnection
+    where T: 'static + PassiveConnection<S1, S2> + Send + ?Sized,
+          S1: Send,
+          S2: Send,
     {
         // for strict ordering of agent-connection_prop, bounded(1) is chosen.
         let (tx_report, rx_report) = crossbeam_channel::bounded(1);

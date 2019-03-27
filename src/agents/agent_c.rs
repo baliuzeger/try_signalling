@@ -1,7 +1,7 @@
 use std::sync::{Mutex, Arc, Weak};
-use crate::connections::{RunningPassiveConnection};
-use crate::connections::signal_1::{S1Generator, S1Acceptor, S1PassivePropagator};
-use crate::connections::signal_1::{FwdPreS1};
+use crate::connections::{RunningPassiveConnection, PassiveConnection};
+use crate::connections::signal_1::{S1Generator, S1Acceptor};
+use crate::connections::signal_1::{FwdPreS1, FwdPostS1};
 use crate::connections::signal_1::{PreAgentComponentS1, PostAgentComponentS1};
 use crate::agents::{Agent, AgentEvent};
 use crate::supervisor::{RunMode, DeviceMode};
@@ -23,7 +23,7 @@ struct EndProduct {
 }
 
 impl S1Generator for Model {
-    fn add_out_passive_s1 (&mut self, connection: Weak<Mutex<dyn S1PassivePropagator + Send>>)
+    fn add_out_passive_s1 (&mut self, connection: Weak<Mutex<dyn PassiveConnection<FwdPreS1, FwdPostS1> + Send>>)
     {
         self.pre_module_s1.add_connection(connection);
         
@@ -31,27 +31,27 @@ impl S1Generator for Model {
 }
 
 impl S1Acceptor for Model {
-    fn add_in_s1(&mut self, connection: Weak<Mutex<dyn S1PassivePropagator + Send>>) {
+    fn add_in_s1(&mut self, connection: Weak<Mutex<dyn PassiveConnection<FwdPreS1, FwdPostS1> + Send>>) {
         self.post_module_s1.add_connection(connection);
     }
 }
 
 impl Agent for Model {
     fn config_run(&mut self, mode: RunMode) {
-        match DeviceMode::eq_variant(mode, self.mode()) {
-            DeviceMode::Idle(_) => println!("config_run for mode Idle, no effect."),
-            DeviceMode::Feedforward(_) => {
+        match (mode, self.mode()) {
+            (RunMode::Idle, _) => println!("config_run for mode Idle, no effect."),
+            (mi, RunMode::Idle) => {
                 self.pre_module_s1.config_run(mode);
                 self.post_module_s1.config_run(mode);
             },
+            (_, _) => panic!("call config_run when agent not idle!")
         }
-        
     }
 
     fn config_idle(&mut self) {
         match &self.mode() {
-            DeviceMode::Idle(_) => println!("config_idel at mode Idle, no effect."),
-            DeviceMode::Feedforward(_) => {
+            RunMode::Idle => println!("config_idel at mode Idle, no effect."),
+            RunMode::Feedforward => {
                 self.pre_module_s1.config_idle();
                 self.post_module_s1.config_idle();
             },
@@ -63,7 +63,7 @@ impl Agent for Model {
     }
     
     fn end(&mut self) {
-        self.store();
+        self.accept();
     }
     
     fn evolve(&mut self) -> AgentEvent {
@@ -96,6 +96,7 @@ impl Model {
     pub fn new(gen_value: i32, proc_value: i32, event_cond: Option<i32>) -> Arc<Mutex<Model>> {
         Arc::new(Mutex::new(
             Model{
+                config: RunMode::Idle,
                 pre_module_s1: PreAgentComponentS1::new(),
                 post_module_s1: PostAgentComponentS1::new(),
                 gen_value,
@@ -107,7 +108,7 @@ impl Model {
     }
 
     fn mode(&self) -> RunMode {
-        DeviceMode::eq_variant(self.pre_module_s1.mode(),self.post_module_s1.mode())
+        RunMode::eq_mode(self.pre_module_s1.mode(),self.post_module_s1.mode())
     }
     
     fn generate(&self) {

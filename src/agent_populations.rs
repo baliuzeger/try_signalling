@@ -103,11 +103,15 @@ pub struct SimplePopulation<T: Agent> {
 
 impl<T: 'static + Agent + Send> AgentPopulation for SimplePopulation<T> {
     fn config_run(&self, mode: RunMode) {
-        self.agents.iter().map(|agnt| agnt.lock().unwrap().config_run(mode)).collect();
+        for agnt in &self.agents {
+            agnt.lock().unwrap().config_run(mode);
+        }
     }
 
     fn config_idle(&mut self) {
-        self.agents.iter().map(|agnt| agnt.lock().unwrap().config_idle()).collect();
+        for agnt in &self.agents {
+            agnt.lock().unwrap().config_idle();
+        }
     }
 
     fn running_agents(&self) -> Vec<RunningAgent> {

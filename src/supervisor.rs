@@ -21,7 +21,15 @@ impl RunMode {
             DeviceMode::Idle(_) => RunMode::Idle,
             DeviceMode::Feedforward(_) => RunMode::Feedforward,
         }
-    }    
+    }
+
+    pub fn eq_mode(m1: RunMode, m2: RunMode) -> RunMode {
+        match (m1, m2) {
+            (RunMode::Idle, RunMode::Idle) => RunMode::Idle,
+            (RunMode::Feedforward, RunMode::Feedforward) => RunMode::Feedforward,
+            _ => panic!("Runmode mismatch at check!"),
+        }
+    }
 }
 
 pub enum DeviceMode<I, F> {

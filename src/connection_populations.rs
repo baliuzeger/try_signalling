@@ -1,3 +1,4 @@
+use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
 use crate::connections::PassiveConnection;
 use crate::supervisor::{RunMode};
@@ -7,11 +8,20 @@ pub trait ConnectionPopulation {
     fn config_idle(&mut self);
 }
 
-pub struct SimplePassiveConnectionPopulation<T: PassiveConnection> {
+pub struct SimplePassiveConnectionPopulation<T, S0, S1>
+where T: PassiveConnection<S0, S1>,
+      S0: Send,
+      S1: Send,
+{
     connections: Vec<Arc<Mutex<T>>>,
+    phantom: PhantomData<(S0, S1)>
 }
 
-impl<T: PassiveConnection> ConnectionPopulation for SimplePassiveConnectionPopulation<T> {
+impl<T, S0, S1> ConnectionPopulation for SimplePassiveConnectionPopulation<T, S0, S1>
+where T: PassiveConnection<S0, S1>,
+      S0: Send,
+      S1: Send,
+{
     fn config_run(&mut self, mode: RunMode) {
         self.connections.iter().map(|conn| conn.lock().unwrap().config_run(mode)).collect();
     }
@@ -21,10 +31,15 @@ impl<T: PassiveConnection> ConnectionPopulation for SimplePassiveConnectionPopul
     }
 }
 
-impl<T: 'static + PassiveConnection + Send>  SimplePassiveConnectionPopulation<T> {
-    pub fn new() -> Arc<Mutex<SimplePassiveConnectionPopulation<T>>> {
+impl<T, S0, S1>  SimplePassiveConnectionPopulation<T, S0, S1>
+where T: PassiveConnection<S0, S1>,
+      S0: Send,
+      S1: Send,
+{
+    pub fn new() -> Arc<Mutex<SimplePassiveConnectionPopulation<T, S0, S1>>> {
         Arc::new(Mutex::new(SimplePassiveConnectionPopulation{
             connections: Vec::new(),
+            phantom: PhantomData {},
         }))
     }
 

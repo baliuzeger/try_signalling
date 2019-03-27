@@ -3,33 +3,41 @@ use crate::agent_components::{ComponentIdle, PreComponentFFW};
 use crate::supervisor::{RunMode, DeviceMode};
 use crate::connections::{RunningPassiveConnection, PassiveConnection};
 
-pub struct PreComponent<C: PassiveConnection + Send + ?Sized, S: Send> {
-    config: DeviceMode<ComponentIdle<C>,
-                       PreComponentFFW<C, S>>
+pub struct PreComponent<C, S0, S1>
+where C: 'static + PassiveConnection<S0, S1> + Send + ?Sized,
+      S0: Send,
+      S1: Send,
+{
+    config: DeviceMode<ComponentIdle<C, S0, S1>,
+                       PreComponentFFW<C, S0, S1>>
 }
 
-impl<C: PassiveConnection + Send, S: Send> PreComponent<C, S> {
-    pub fn new() -> PreComponent<C, S> {
+impl<C, S0, S1> PreComponent<C, S0, S1>
+where C: 'static +PassiveConnection<S0, S1> + Send + ?Sized,
+      S0: Send,
+      S1: Send,
+{
+    pub fn new() -> PreComponent<C, S0, S1> {
         PreComponent {
             config: DeviceMode::Idle(ComponentIdle::new()),
         }
     }
 
     pub fn mode(&self) -> RunMode {
-        DeviceMode::variant(self.config)
+        RunMode::mode_from_device(self.config)
     }
     
     pub fn add_connection(&mut self, connection: Weak<Mutex<C>>) {
         match &mut self.config {
-            DeviceMode::Idle(m) => m.add_conection(connection), 
+            DeviceMode::Idle(m) => m.add_connection(connection), 
             _ => panic!("can only add_conntion when DeviceMode::Idle!"),
         }
     }
 
     pub fn config_run(&mut self, mode: RunMode) {
         match (mode, &self.config) {
-            (DeviceMode::Idle(_), _) => println!("config_run for mode Idle, no effect."),
-            (mi, DeviceMode::Idle(ms)) => self.config = DeviceMode::Feedforward(ms.make_ffw_pre()),
+            (RunMode::Idle, _) => println!("config_run for mode Idle, no effect."),
+            (_, DeviceMode::Idle(ms)) => self.config = DeviceMode::Feedforward(ms.make_ffw_pre::<S0>()),
             (_, _) => panic!("call fn config_run when not DeviceMode::Idle!"),
         }
     }
@@ -48,9 +56,9 @@ impl<C: PassiveConnection + Send, S: Send> PreComponent<C, S> {
         }
     }
 
-    pub fn feedforward(&self, s: S) {
-        match &self {
-            DeviceMode::FeedForward(m) => m.feeddorward(s),
+    pub fn feedforward(&self, s: S0) {
+        match &self.config {
+            DeviceMode::Feedforward(m) => m.feedforward(s),
             _ => panic!("PreAgentmodules1 is not Feedforward when feedforward called!"),
         }
     }

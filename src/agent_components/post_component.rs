@@ -3,40 +3,48 @@ use crate::agent_components::{ComponentIdle, PostComponentFFW};
 use crate::supervisor::{RunMode, DeviceMode};
 use crate::connections::PassiveConnection;
 
-pub struct PostComponent<C: PassiveConnection + Send + ?Sized, S: Send> {
-    config: DeviceMode<ComponentIdle<C>,
-                       PostComponentFFW<C, S>>
+pub struct PostComponent<C, S0, S1>
+where C: 'static + PassiveConnection<S0, S1> + Send + ?Sized,
+      S0: Send,
+      S1: Send,
+{
+    config: DeviceMode<ComponentIdle<C, S0, S1>,
+                       PostComponentFFW<C, S0, S1>>
 }
 
-impl<C: PassiveConnection + Send, S: Send> PostComponent<C, S> {
-    fn new() -> PostComponent<C, S> {
+impl<C, S0, S1> PostComponent<C, S0, S1>
+where C: 'static + PassiveConnection<S0, S1> + Send + ?Sized,
+      S0: Send,
+      S1: Send,
+{
+    pub fn new() -> PostComponent<C, S0, S1> {
         PostComponent {
             config: DeviceMode::Idle(ComponentIdle::new()),
         }
     }
 
     pub fn mode(&self) -> RunMode {
-        DeviceMode::variant(self.config)
+        RunMode::mode_from_device(self.config)
     }
     
-    pub fn ffw_accepted(&self) -> Vec<S> {
-        match &mut self {
+    pub fn ffw_accepted(&self) -> Vec<S1> {
+        match &mut self.config {
             DeviceMode::Feedforward(m) => m.accepted(),
             DeviceMode::Idle(_) => panic!("PostComponent is Idle when .accepted called!"),
         }
     }
     
-    pub fn add_connection(&mut self, connection: Weak<Mutex<S>>) {
+    pub fn add_connection(&mut self, connection: Weak<Mutex<C>>) {
         match &mut self.config {
-            DeviceMode::Idle(m) => m.add_conection(connection), 
+            DeviceMode::Idle(m) => m.add_connection(connection), 
             _ => panic!("can only add_conntion when DeviceMode::Idle!"),
         }
     }
 
     pub fn config_run(&mut self, mode: RunMode) {
         match (mode, &self.config) {
-            (DeviceMode::Idle(_), _) => println!("config_run for mode Idle, no effect."),
-            (mi, DeviceMode::Idle(ms)) => self.config = DeviceMode::Feedforward(ms.make_ffw_post()),
+            (RunMode::Idle, _) => println!("config_run for mode Idle, no effect."),
+            (_, DeviceMode::Idle(ms)) => self.config = DeviceMode::Feedforward(ms.make_ffw_post::<S1>()),
             (_, _) => panic!("call fn config_run when not DeviceMode::Idle!"),
         }
     }

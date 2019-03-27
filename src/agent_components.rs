@@ -1,5 +1,4 @@
-use std::sync::{Arc, Mutex, Weak};
-use std::marker;
+use std::sync::{Mutex, Weak};
 use std::marker::PhantomData;
 extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
@@ -55,17 +54,20 @@ where C: PassiveConnection<S0, S1> + Send + ?Sized,
         }
     }
 
-    fn make_ffw_post<S: Send>(&self) -> PostComponentFFW<C, S> {
+    fn make_ffw_post<S: Send>(&self) -> PostComponentFFW<C, S0, S1> {
         PostComponentFFW {
-            connections: self.connections.iter().map(|conn| InSetFFW {
-                connection: conn.clone(),
-                channel: match conn.upgrade().lock().unwrap().mode() {
-                    RunMode::Feedforward => None,
-                    RunMode::Feedforward => {
-                        let (tx, rx) = crossbeam_channel::bounded(1);
-                        conn.set_post_channel(Some(tx));
-                        Some(rx)
-                    },
+            connections: self.connections.iter().map(|conn| {
+                let unlocked_conn = conn.upgrade().unwrap().lock().unwrap();
+                InSetFFW {
+                    connection: conn.clone(),
+                    channel: match unlocked_conn.mode() {
+                        RunMode::Feedforward => None,
+                        RunMode::Feedforward => {
+                            let (tx, rx) = crossbeam_channel::bounded(1);
+                            unlocked_conn.set_post_channel_ffw(Some(tx));
+                            Some(rx)
+                        },
+                    }
                 }
             }).collect(),
             phantom: PhantomData {},
@@ -74,7 +76,7 @@ where C: PassiveConnection<S0, S1> + Send + ?Sized,
 }
 
 pub struct PreComponentFFW<C, S0, S1>
-where C: PassiveConnection<S0, S1> + Send + ?Sized,
+where C: 'static + PassiveConnection<S0, S1> + Send + ?Sized,
       S0: Send,
       S1: Send,
 {
@@ -83,15 +85,13 @@ where C: PassiveConnection<S0, S1> + Send + ?Sized,
 }
 
 impl<C, S0, S1> PreComponentFFW<C, S0, S1>
-where C: PassiveConnection<S0, S1> + Send + ?Sized,
+where C: 'static + PassiveConnection<S0, S1> + Send + ?Sized,
       S0: Send,
       S1: Send,
 {
     pub fn make_idle(&self) -> ComponentIdle<C, S0, S1> {
         ComponentIdle {
-            connections: self.connections.iter()
-                .map(|set| Arc::downgrade(set.connection.upgrade().expect("no object in Weak<conection>!")))
-                .collect(),
+            connections: self.connections.iter().map(|set| set.connection.clone()).collect(),
             phantom: PhantomData {},
         }
     }
@@ -100,16 +100,16 @@ where C: PassiveConnection<S0, S1> + Send + ?Sized,
         self.connections.iter().filter_map(|set| {
             match &set.channel {
                 None => None,
-                Some(_) => RunningPassiveConnection::new(set.connection.upgrade().unwrap()),
+                Some(_) => Some(RunningPassiveConnection::new(set.connection.upgrade().unwrap())),
             }
-        }).collect();
+        }).collect()
     }
     
     pub fn feedforward(&self, s: S0) {
         for set in &self.connections {
             match &set.channel {
                 None => (),
-                Some(tx) => tx.send(s),
+                Some(tx) => tx.send(s).unwrap(),
             }
         }
     }
@@ -131,9 +131,7 @@ where C: PassiveConnection<S0, S1> + Send + ?Sized,
 {
     pub fn make_idle(&self) -> ComponentIdle<C, S0, S1> {
         ComponentIdle {
-            connections: self.connections.iter()
-                .map(|set| Arc::downgrade(set.connection.upgrade().expect("no object in Weak<conection>!")))
-                .collect(),
+            connections: self.connections.iter().map(|set| set.connection.clone()).collect(),
             phantom: PhantomData {},
         }
     }
@@ -145,16 +143,7 @@ where C: PassiveConnection<S0, S1> + Send + ?Sized,
                     None => None,
                     Some(rx) => Some(rx.try_iter()),
                 }
-            }).flatten().collect();
-    }
-
-    fn store(&mut self) {
-        for conn in &self.connections {
-            match &conn.channel {
-                None => (),
-                Some(rx) => self.buffer.append(rx.try_iter().collect()),
-            }
-        }
+            }).flatten().collect()
     }
 }
 

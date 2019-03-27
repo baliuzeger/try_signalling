@@ -9,8 +9,13 @@ pub struct ConnectionComponent<G: Send + ?Sized, A: Send + ?Sized, R: Send, S: S
                        ComponentFFW<G, A, R, S>>
 }
 
-impl<G: Send, A: Send, R: Send, S: Send> ConnectionComponent<G, A, R, S> {
-    fn new(pre: Weak<Mutex<G>>, post: Weak<Mutex<A>>) -> ConnectionComponent<G, A, R, S> {
+impl<G: Send, A: Send, R: Send, S: Send> ConnectionComponent<G, A, R, S>
+where G: Send + ?Sized,
+      A: Send + ?Sized,
+      R: Send,
+      S: Send,
+{
+    pub fn new(pre: Weak<Mutex<G>>, post: Weak<Mutex<A>>) -> ConnectionComponent<G, A, R, S> {
         ConnectionComponent {
             config: DeviceMode::Idle(ComponentIdle::new(pre, post)),
         }
@@ -20,36 +25,36 @@ impl<G: Send, A: Send, R: Send, S: Send> ConnectionComponent<G, A, R, S> {
         RunMode::mode_from_device(self.config)
     }
 
-    fn config_run(&mut self, mode: RunMode) {
+    pub fn config_run(&mut self, mode: RunMode) {
         match (mode, &self.config) {
-            (DeviceMode::Idle(_), _) => println!("config_run for mode Idle, no effect."),
-            (mi, DeviceMode::Idle(ms)) => self.config = DeviceMode::Feedforward(ms.make_ffw()),
+            (RunMode::Idle, _) => println!("config_run for mode Idle, no effect."),
+            (_, DeviceMode::Idle(ms)) => self.config = DeviceMode::Feedforward(ms.make_ffw()),
             (_, _) => panic!("call fn config_run when not DeviceMode::Idle!"),
         }
     }
     
-    fn config_idle(&mut self) {
+    pub fn config_idle(&mut self) {
         match &self.config {
             DeviceMode::Feedforward(m) => self.config = DeviceMode::Idle(m.make_idle()),
             DeviceMode => panic!("call fn config_idle when DeviceMode::Idle!"),
         }
     }
     
-    fn set_pre_ffw(&mut self, pre_channel: Option<CCReceiver<R>>) {
+    pub fn set_pre_channel_ffw(&mut self, pre_channel: Option<CCReceiver<R>>) {
         match &self.config {
             DeviceMode::Feedforward(m) => m.set_pre_channel(pre_channel),
             _ => panic!("call fn set_pre_ffw when not DeviceMode::Feedforward!")
         }
     }
 
-    fn set_post_ffw(&mut self, post_channel: Option<CCSender<S>>) {
+    pub fn set_post_channel_ffw(&mut self, post_channel: Option<CCSender<S>>) {
         match &self.config {
             DeviceMode::Feedforward(m) => m.set_post_channel(post_channel),
-            _ => panic!("call fn set_post_ffw when not DeviceMode::Feedforward!")
+            _ => panic!("call fn set_post_ffw when not DeviceMode::Feedforward!"),
         }
     }
     
-    pub fn import(&mut self) {
+    pub fn import(&mut self) -> R {
         match &self.config {
             DeviceMode::Feedforward(m) => m.import(),
             DeviceMode => panic!("call fn import when DeviceMode::Idle!"),
@@ -58,7 +63,7 @@ impl<G: Send, A: Send, R: Send, S: Send> ConnectionComponent<G, A, R, S> {
 
     pub fn export(&self, s: S) {
         match &self.config {
-            DeviceMode::Feedforward(m) => m.export(),
+            DeviceMode::Feedforward(m) => m.export(s),
             DeviceMode => panic!("call fn export when DeviceMode::Idle!"),
         }
     }    
@@ -69,7 +74,7 @@ pub struct ComponentIdle<G: Send + ?Sized, A: Send + ?Sized> {
     post: Weak<Mutex<A>>,
 }
 
-impl<G: Send, A: Send> ComponentIdle<G, A> {
+impl<G: Send + ?Sized, A: Send + ?Sized> ComponentIdle<G, A> {
     fn new(pre: Weak<Mutex<G>>, post: Weak<Mutex<A>>) -> ComponentIdle<G, A> {
         ComponentIdle {
             pre,
@@ -97,11 +102,11 @@ pub struct ComponentFFW<G: Send + ?Sized, A: Send + ?Sized, R: Send, S: Send> {
     post_channel: Option<CCSender<S>>,
 }
 
-impl<G: Send, A: Send, R: Send, S: Send> ComponentFFW<G, A, R, S> {
+impl<G: Send + ?Sized, A: Send + ?Sized, R: Send, S: Send> ComponentFFW<G, A, R, S> {
     fn make_idle(&self) -> ComponentIdle<G, A> {
         ComponentIdle {
-            pre: Weak::clone(self.pre),
-            post: Weak::clone(self.post),
+            pre: self.pre.clone(),
+            post: self.post.clone(),
         }
     }
 
@@ -114,7 +119,7 @@ impl<G: Send, A: Send, R: Send, S: Send> ComponentFFW<G, A, R, S> {
     }
     
     fn import(&mut self) -> R {
-        self.pre_channel.expect("FFW connection has no pre_channel!").recv().unwrap();
+        self.pre_channel.expect("FFW connection has no pre_channel!").recv().unwrap()
     }
 
     fn export(&self, s: S) {

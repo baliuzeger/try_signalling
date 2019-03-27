@@ -1,6 +1,9 @@
+extern crate crossbeam_channel;
+use crossbeam_channel::Receiver as CCReceiver;
+use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc, Weak};
 use crate::connections::{PassiveConnection};
-use crate::connections::signal_1::{S1PassivePropagator, S1Propagator, S1Acceptor, S1Generator};
+use crate::connections::signal_1::{S1Acceptor, S1Generator};
 use crate::connections::signal_1::{FwdPreS1, FwdPostS1};
 use crate::connections::signal_1::{ConnectionComponentS1};
 use crate::supervisor::{RunMode};
@@ -10,13 +13,9 @@ pub struct Model {
     value: i32,
 }
 
-impl S1PassivePropagator for Model {}
-
-impl S1Propagator for Model {}
-
-impl PassiveConnection for Model {
+impl PassiveConnection<FwdPreS1, FwdPostS1> for Model {
     fn mode(&self) -> RunMode {
-        RunMode::variant(self.module.mode());
+        self.module.mode()
     }
 
     fn config_run(&mut self, mode: RunMode) {
@@ -29,6 +28,14 @@ impl PassiveConnection for Model {
     
     fn propagate(&self) {
         self.module.export(self.refine(self.module.import()));
+    }
+
+    fn set_pre_channel_ffw(&mut self, channel: Option<CCReceiver<FwdPreS1>>) {
+        self.module.set_pre_channel_ffw(channel);
+    }
+    
+    fn set_post_channel_ffw(&mut self, channel: Option<CCSender<FwdPostS1>>) {
+        self.module.set_post_channel_ffw(channel);        
     }
 }
 
