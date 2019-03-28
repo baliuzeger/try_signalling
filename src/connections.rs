@@ -9,7 +9,7 @@ use crate::random_sleep;
 use crate::supervisor::{RunMode ,Broadcast};
 
 pub mod signal_1;
-// pub mod signal_2;
+pub mod signal_2;
 
 pub struct RunningPassiveConnection {
     pub instance: JoinHandle<()>,

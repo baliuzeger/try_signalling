@@ -2,8 +2,8 @@ use std::sync::{Mutex, Arc, Weak};
 use crate::connections::{RunningPassiveConnection, PassiveConnection};
 use crate::connections::signal_1::{FwdPreS1, FwdPostS1};
 use crate::connections::signal_1::{PreAgentComponentS1, PostAgentComponentS1};
-use crate::connections::signal_1::{FwdPreS2, FwdPostS2};
-use crate::connections::signal_1::{PreAgentComponentS2, PostAgentComponentS2};
+use crate::connections::signal_2::{FwdPreS2, FwdPostS2};
+use crate::connections::signal_2::{PreAgentComponentS2, PostAgentComponentS2};
 use crate::agents::{Agent, AgentEvent, Generator, Acceptor};
 use crate::supervisor::{RunMode};
 
@@ -83,9 +83,10 @@ impl Agent for Model {
     }
 
     fn running_connections(&self) -> Vec<RunningPassiveConnection> {
-        self.pre_module_s1.running_connections().append(
-            self.pre_module_s1.running_connections()    
-        )
+        let mut v1 = self.pre_module_s1.running_connections();
+        let mut v2 = self.pre_module_s2.running_connections();
+        v1.append(&mut v2);
+        v1
     }
     
     fn end(&mut self) {
@@ -125,7 +126,7 @@ impl Model {
                 pre_module_s1: PreAgentComponentS1::new(),
                 post_module_s1: PostAgentComponentS1::new(),
                 pre_module_s2: PreAgentComponentS2::new(),
-                post_module_s2: PostAgentComponentS1::new(),
+                post_module_s2: PostAgentComponentS2::new(),
                 gen_value,
                 proc_value,
                 event_cond,

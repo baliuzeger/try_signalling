@@ -3,8 +3,8 @@ use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc, Weak};
 use crate::connections::{PassiveConnection};
-use crate::connections::signal_1::{FwdPreS2, FwdPostS2};
-use crate::connections::signal_1::{ConnectionComponentS2};
+use crate::connections::signal_2::{FwdPreS2, FwdPostS2};
+use crate::connections::signal_2::{ConnectionComponentS2};
 use crate::supervisor::{RunMode};
 use crate::agent_populations::{HoldAgents};
 use crate::agents::{Generator, Acceptor};
@@ -59,8 +59,8 @@ impl<G: Generator<FwdPreS2, FwdPostS2> + Send, A: Acceptor<FwdPreS2, FwdPostS2> 
             module: ConnectionComponentS2::new(pre.clone(), post.clone()),
             value,
         }));
-        pre.upgrade().unwrap().lock().unwrap().add_out_passive_s1(Arc::downgrade(&conn));
-        post.upgrade().unwrap().lock().unwrap().add_in_s1(Arc::downgrade(&conn));
+        pre.upgrade().unwrap().lock().unwrap().add_out_passive(Arc::downgrade(&conn));
+        post.upgrade().unwrap().lock().unwrap().add_in(Arc::downgrade(&conn));
         conn
     }
 

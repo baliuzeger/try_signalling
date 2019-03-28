@@ -8,7 +8,7 @@ use crate::random_sleep;
 use crate::supervisor::{RunMode, Broadcast};
 use crate::connections::{PassiveConnection, RunningPassiveConnection};
 
-// pub mod agent_a;
+pub mod agent_a;
 // pub mod agent_b;
 pub mod agent_c;
 
