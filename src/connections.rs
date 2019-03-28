@@ -57,3 +57,11 @@ pub trait PassiveConnection<S0: Send, S1: Send> {
         }
     }
 }
+
+// pub trait PassiveImporter<S0: Send>: PassiveConnection<S0: Send, S1: Send> {
+//     fn set_pre_channel_ffw(&mut self, channel: Option<CCReceiver<S0>>);
+// }
+
+// pub trait PassiveExporter<S1: Send>: PassiveConnection<S0: Send, S1: Send> {
+//     fn set_post_channel_ffw(&mut self, channel: Option<CCSender<S1>>);    
+// }
