@@ -6,7 +6,7 @@ use crate::supervisor::{DeviceMode, RunMode};
 
 pub struct ConnectionComponent<G: Send + ?Sized, A: Send + ?Sized, R: Send, S: Send> {
     config: DeviceMode<ComponentIdle<G, A>,
-                       ComponentFFW<G, A, R, S>>
+                       ComponentFFW<G, A, R, S>> // how about use associated type to avoid R & S? impl trait on trait?
 }
 
 impl<G: Send, A: Send, R: Send, S: Send> ConnectionComponent<G, A, R, S>

@@ -105,7 +105,7 @@ impl Agent for Model {
             Some(n) => {
                 match self.proc_value % n {
                     0 => {
-                        // println!("agnet a fire. gen: {}, proc: {}.",  self.gen_value, self.proc_value);
+                        println!("agnet a fire. gen: {}, proc: {}.",  self.gen_value, self.proc_value);
                         self.generate();
                         AgentEvent::Y
                     },
@@ -155,14 +155,36 @@ impl Model {
                 msg_gen: s.msg_gen,
                 msg_prop: s.msg_prop,
                 msg_proc: self.proc_value,
-        }).collect();
+        }).collect::<Vec<FwdEndProduct>>();
+
+        // for demo accepting
+        for msg in &acc {
+            println!(
+                "agent a accept: gen: {}, prop: {}, proc: {}.",
+                msg.msg_gen,
+                msg.msg_prop,
+                msg.msg_proc
+            )
+        }
+        
         self.stock.append(&mut acc);
 
         let mut acc = self.post_module_s2.ffw_accepted().iter().map(|s| FwdEndProduct {
             msg_gen: s.msg_gen,
             msg_prop: s.msg_prop,
             msg_proc: self.proc_value,
-        }).collect();
+        }).collect::<Vec<FwdEndProduct>>();
+
+        // for demo accepting
+        for msg in &acc {
+            println!(
+                "agent a accept: gen: {}, prop: {}, proc: {}.",
+                msg.msg_gen,
+                msg.msg_prop,
+                msg.msg_proc
+            )
+        }
+        
         self.stock.append(&mut acc);
     }
 
@@ -173,7 +195,7 @@ impl Model {
     pub fn show(&self) {
         for msg in &self.stock {
             println!(
-                "buffer_1: gen: {}, prop: {}, proc: {}.",
+                "agent a buffer: gen: {}, prop: {}, proc: {}.",
                 msg.msg_gen,
                 msg.msg_prop,
                 msg.msg_proc
