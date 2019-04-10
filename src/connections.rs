@@ -34,13 +34,12 @@ impl RunningPassiveConnection {
     }    
 }
 
-pub trait PassiveConnection<S0: Send, S1: Send> {
-    fn mode(&self) -> RunMode;
+pub trait PassiveConnection: PassiveImporter + PassiveExporter {
+    type PreSignal;
+    type PostSignal;
     fn config_run(&mut self, mode: RunMode);
     fn config_idle(&mut self);
     fn propagate(&self);
-    fn set_pre_channel_ffw(&mut self, channel: Option<CCReceiver<S0>>);
-    fn set_post_channel_ffw(&mut self, channel: Option<CCSender<S1>>);
     fn run(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<bool>){
         loop {
             random_sleep();
@@ -58,10 +57,14 @@ pub trait PassiveConnection<S0: Send, S1: Send> {
     }
 }
 
-// pub trait PassiveImporter<S0: Send>: PassiveConnection<S0: Send, S1: Send> {
-//     fn set_pre_channel_ffw(&mut self, channel: Option<CCReceiver<S0>>);
-// }
+pub trait PassiveImporter {
+    type Signal;
+    fn mode(&self) -> RunMode;
+    fn set_pre_channel_ffw(&mut self, channel: Option<CCReceiver<Signal>>);
+}
 
-// pub trait PassiveExporter<S1: Send>: PassiveConnection<S0: Send, S1: Send> {
-//     fn set_post_channel_ffw(&mut self, channel: Option<CCSender<S1>>);    
-// }
+pub trait PassiveExporter {
+    type Signal;
+    fn mode(&self) -> RunMode;
+    fn set_post_channel_ffw(&mut self, channel: Option<CCSender<Signal>>);
+}

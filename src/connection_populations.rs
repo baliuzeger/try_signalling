@@ -8,19 +8,14 @@ pub trait ConnectionPopulation {
     fn config_idle(&mut self);
 }
 
-pub struct SimplePassiveConnectionPopulation<T, S0, S1>
+pub struct SimplePassiveConnectionPopulation<T>
 where T: PassiveConnection<S0, S1>,
-      S0: Send,
-      S1: Send,
 {
     connections: Vec<Arc<Mutex<T>>>,
-    phantom: PhantomData<(S0, S1)>
 }
 
-impl<T, S0, S1> ConnectionPopulation for SimplePassiveConnectionPopulation<T, S0, S1>
+impl<T> ConnectionPopulation for SimplePassiveConnectionPopulation<T>
 where T: PassiveConnection<S0, S1>,
-      S0: Send,
-      S1: Send,
 {
     fn config_run(&mut self, mode: RunMode) {
         // println!("SimplePassiveconnectionpopulation config_run.");
@@ -36,12 +31,10 @@ where T: PassiveConnection<S0, S1>,
     }
 }
 
-impl<T, S0, S1>  SimplePassiveConnectionPopulation<T, S0, S1>
+impl<T>  SimplePassiveConnectionPopulation<T>
 where T: PassiveConnection<S0, S1>,
-      S0: Send,
-      S1: Send,
 {
-    pub fn new() -> Arc<Mutex<SimplePassiveConnectionPopulation<T, S0, S1>>> {
+    pub fn new() -> Arc<Mutex<SimplePassiveConnectionPopulation<T>>> {
         Arc::new(Mutex::new(SimplePassiveConnectionPopulation{
             connections: Vec::new(),
             phantom: PhantomData {},
@@ -56,4 +49,10 @@ where T: PassiveConnection<S0, S1>,
     pub fn connection_by_id(&self, n: usize) -> Arc<Mutex<T>> {
         Arc::clone(&self.connections[n])
     }    
+}
+
+pub struct MixedSimplePassiveConnectionPopulation<T>
+where T: PassiveConnection
+{
+    connections: Vec<Arc<Mutex<T>>>,
 }

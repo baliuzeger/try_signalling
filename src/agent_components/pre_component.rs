@@ -1,64 +1,120 @@
+extern crate crossbeam_channel;
+use crossbeam_channel::Receiver as CCReceiver;
+use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Weak};
-use crate::agent_components::{ComponentIdle, PreComponentFFW};
 use crate::supervisor::{RunMode, DeviceMode};
-use crate::connections::{RunningPassiveConnection, PassiveConnection};
+use crate::connections::{RunningPassiveConnection, PassiveImporter};
 
-pub struct PreComponent<C, S0, S1>
-where C: 'static + PassiveConnection<S0, S1> + Send + ?Sized,
-      S0: Send + Copy,
-      S1: Send + Copy,
+pub struct OutConnectionSet<C: Send + ?Sized>
+where C: PassiveImporter + Send + ?Sized,
 {
-    config: DeviceMode<ComponentIdle<C, S0, S1>,
-                       PreComponentFFW<C, S0, S1>>
+    pub connection: Weak<Mutex<C>>,
+    pub config: DeviceMode<ChannelsOutFFW<C::Signal>>,
 }
 
-impl<C, S0, S1> PreComponent<C, S0, S1>
-where C: 'static +PassiveConnection<S0, S1> + Send + ?Sized,
-      S0: Send + Copy,
-      S1: Send + Copy,
+impl<C> struct OutConnectionSet<C: Send + ?Sized> {
+    pub fn config_run(&mut self, mode: RunMode) {
+        let arc = self.connection.upgrade().unwrap();
+        let mut unlocked_conn = arc.lock().unwrap();
+        self.config = match unlocked_conn.mode() {
+            RunMode::Idle => DeviceMode::Idle,
+            RunMode::Feedforward => {
+                let (tx, rx) = crossbeam_channel::bounded(1);
+                unlocked_conn.set_pre_channel_ffw(Some(rx));
+                DeviceMode::Feedforward(
+                    ChannelsOutFFW {
+                        ch_ffw: tx
+                    }
+                )
+            },
+        }
+    }
+
+    pub fn config_idle(&mut self) {
+        self.config = DeviceMode::Idle;
+    }
+}
+
+struct ChannelsOutFFW<S: Send> {
+    pub ch_ffw: CCSender<S>,
+}
+
+pub struct PreComponent<C>
+where C: 'static + PassiveImporter + Send + ?Sized,
 {
-    pub fn new() -> PreComponent<C, S0, S1> {
+    mode: RunMode,
+    connections: Vec<OutConnectionSet<C>>,
+}
+
+impl<C> PreComponent<C>
+where C: 'static + PassiveImporter + Send + ?Sized,
+{
+    pub fn new() -> PreComponent<C> {
         PreComponent {
-            config: DeviceMode::Idle(ComponentIdle::new()),
+            mode: RunMode::Idle,
+            connections: Vec::new(),
         }
     }
 
     pub fn mode(&self) -> RunMode {
-        RunMode::mode_from_device(&self.config)
+        self.mode
     }
     
     pub fn add_connection(&mut self, connection: Weak<Mutex<C>>) {
-        match &mut self.config {
-            DeviceMode::Idle(m) => m.add_connection(connection), 
+        match &mut self.mode {
+            RunMode::Idle => self.connections.push(OutConnectionSet {
+                connection,
+                config: DeviceMode::Idle,
+            }), 
             _ => panic!("can only add_conntion when DeviceMode::Idle!"),
         }
     }
 
     pub fn config_run(&mut self, mode: RunMode) {
-        match (mode, &self.config) {
+        match (mode, &self.mode) {
             (RunMode::Idle, _) => println!("config_run for mode Idle, no effect."),
-            (_, DeviceMode::Idle(ms)) => self.config = DeviceMode::Feedforward(ms.make_ffw_pre::<S0>()),
-            (_, _) => panic!("call fn config_run when not DeviceMode::Idle!"),
+            (_, RunMode::Idle(ms)) => {
+                self.mode = mode,
+                for set in &mut self.connections {
+                    set.config_run(mode);
+                }
+            }
+            (_, _) => panic!("call fn config_run when not RunMode::Idle!"),
         }
     }
 
     pub fn running_connections(&self) -> Vec<RunningPassiveConnection> {
-        match &self.config {
-            DeviceMode::Idle(_) => panic!("call running_connections when agent Idle!"),
-            DeviceMode::Feedforward(m) => m.running_connections(),
+        match &self.mode {
+            RunMode::Idle => panic!("call running_connections when agent Idle!"),
+            RunMode::Feedforward => self.connections.iter().filter_map(|set| {
+                match &set.config {
+                    DeviceMode::Idle => None,
+                    DeviceMode::Feedforward(chs) => Some(RunningPassiveConnection::new(set.connection.upgrade().unwrap())),
+                }
+            }).collect()
         }
     }
     
     pub fn config_idle(&mut self) {
-        match &self.config {
-            DeviceMode::Feedforward(m) => self.config = DeviceMode::Idle(m.make_idle()),
-            DeviceMode::Idle(_) => println!("call fn config_idle when Idle, no effect."),
+        match &self.mode {
+            RunMode::Feedforward => {
+                self.mode = RunMode::Idle;
+                for set in &mut self.connections {
+                    set.config_idle();
+                }
+            }
+            RunMode::Idle => println!("call fn config_idle when Idle, no effect."),
         }
     }
 
     pub fn feedforward(&self, s: S0) {
-        match &self.config {
-            DeviceMode::Feedforward(m) => m.feedforward(s),
+        match &self.mode {
+            RunMode::Feedforward => for set in &self.connections {
+                match &set.config {
+                    DeviceMode::Idle => (),
+                    DeviceMode::Feedforward(chs) => chs.ch_ffw.send(s).unwrap();
+                }
+            }
             _ => panic!("PreAgentmodules1 is not Feedforward when feedforward called!"),
         }
     }

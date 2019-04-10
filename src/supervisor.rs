@@ -33,8 +33,8 @@ impl RunMode {
     }
 }
 
-pub enum DeviceMode<I, F> {
-    Idle(I),
+pub enum DeviceMode<F> {
+    Idle,
     Feedforward(F),
 }
 

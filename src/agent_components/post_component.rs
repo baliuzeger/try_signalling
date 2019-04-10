@@ -1,58 +1,112 @@
+extern crate crossbeam_channel;
+use crossbeam_channel::Receiver as CCReceiver;
+use crossbeam_channel::Sender as CCSender;
 use std::sync::{Weak, Mutex};
-use crate::agent_components::{ComponentIdle, PostComponentFFW};
 use crate::supervisor::{RunMode, DeviceMode};
-use crate::connections::PassiveConnection;
+use crate::connections::{PassiveExporter};
 
-pub struct PostComponent<C, S0, S1>
-where C: 'static + PassiveConnection<S0, S1> + Send + ?Sized,
-      S0: Send + Copy,
-      S1: Send + Copy,
+pub struct InConnectionSet<C: Send + ?Sized>
+where C: PassiveExporter + Send + ?Sized,
 {
-    config: DeviceMode<ComponentIdle<C, S0, S1>,
-                       PostComponentFFW<C, S0, S1>>
+    pub connection: Weak<Mutex<C>>,
+    pub config: DeviceMode<ChannelsInFFW<C::Signal>>,
 }
 
-impl<C, S0, S1> PostComponent<C, S0, S1>
-where C: 'static + PassiveConnection<S0, S1> + Send + ?Sized,
-      S0: Send + Copy,
-      S1: Send + Copy,
+impl<C> struct InConnectionSet<C: Send + ?Sized> {
+    pub fn config_run(&mut self, mode: RunMode) {
+        let arc = self.connection.upgrade().unwrap();
+        let mut unlocked_conn = arc.lock().unwrap();
+        self.config = match unlocked_conn.mode() {
+            RunMode::Idle => DeviceMode::Idle,
+            RunMode::Feedforward => {
+                let (tx, rx) = crossbeam_channel::bounded(1);
+                unlocked_conn.set_pre_channel_ffw(Some(tx));
+                DeviceMode::Feedforward(
+                    ChannelsOutFFW {
+                        ch_ffw: rx
+                    }
+                )
+            },
+        }
+    }
+
+    pub fn config_idle(&mut self) {
+        self.config = DeviceMode::Idle;
+    }
+}
+
+struct ChannelsInFFW<S: Send> {
+    ch_ffw: CCReceiver<S>,
+}
+
+pub struct PostComponent<C>
+where C: 'static + PassiveExporter + Send + ?Sized,
 {
-    pub fn new() -> PostComponent<C, S0, S1> {
+    mode: RunMode,
+    connections: Vec<InConnectionSet<C>>,
+}
+
+impl<C> PostComponent<C>
+where C: 'static + PassiveExporter + Send + ?Sized
+{
+    pub fn new() -> PostComponent<C> {
         PostComponent {
-            config: DeviceMode::Idle(ComponentIdle::new()),
+            mode: RunMode::Idle,
+            connections: Vec::new(),
         }
     }
 
     pub fn mode(&self) -> RunMode {
-        RunMode::mode_from_device(&self.config)
+        self.mode
     }
     
     pub fn ffw_accepted(&self) -> Vec<S1> {
-        match &self.config {
-            DeviceMode::Feedforward(m) => m.accepted(),
-            DeviceMode::Idle(_) => panic!("PostComponent is Idle when .accepted called!"),
+        match &self.mode {
+            RunMode::Feedforward => {
+                self.connections.iter()
+                    .filter_map(|set| {
+                        match &set.config {
+                            DeviceMode::Idle => None,
+                            DeviceMode::Feedforward(chs_in_ffw) => chs_in_ffw.ch_ffw.try_iter()
+                        }
+                    }).flatten().collect()
+            },
+            RunMode::Idle => panic!("PostComponent is Idle when accepted() called!"),
         }
     }
     
     pub fn add_connection(&mut self, connection: Weak<Mutex<C>>) {
-        match &mut self.config {
-            DeviceMode::Idle(m) => m.add_connection(connection), 
+        match &mut self.mode {
+            RunMode::Idle(m) => self.connections.push(InConnectionSet {
+                connection,
+                config: DeviceMode::Idle,
+            }), 
             _ => panic!("can only add_conntion when DeviceMode::Idle!"),
         }
     }
 
     pub fn config_run(&mut self, mode: RunMode) {
-        match (mode, &self.config) {
+        match (mode, &self.mode) {
             (RunMode::Idle, _) => println!("config_run for mode Idle, no effect."),
-            (_, DeviceMode::Idle(ms)) => self.config = DeviceMode::Feedforward(ms.make_ffw_post::<S1>()),
+            (_, RunMode::Idle(ms)) => {
+                self.mode = mode,
+                for set in &mut self.connections {
+                    set.config_run(mode);
+                }
+            }
             (_, _) => panic!("call fn config_run when not DeviceMode::Idle!"),
         }
     }
 
     pub fn config_idle(&mut self) {
-        match &self.config {
-            DeviceMode::Feedforward(m) => self.config = DeviceMode::Idle(m.make_idle()),
-            DeviceMode::Idle(_) => println!("call fn config_idle when Idle, no effect."),
+        match &self.mode {
+            RunMode::Feedforward => {
+                self.mode = RunMode::Idle;
+                for set in &mut self.connections {
+                    set.config_idle();
+                }
+            }
+            RunMode::Idle => println!("call fn config_idle when Idle, no effect."),
         }
     }
 }
