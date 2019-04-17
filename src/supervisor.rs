@@ -82,6 +82,7 @@ impl Supervisor {
         for (_, pp) in &self.agent_populations {
             pp.lock().unwrap().config_run(mode);
         }
+
         // println!("start making threads for populations.");
         let mut counter = 0;
         let running_populations: Vec<_> = self.running_agent_populations();

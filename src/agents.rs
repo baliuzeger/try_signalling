@@ -59,6 +59,9 @@ pub trait Agent {
                 },
 
                 Broadcast::NewCycle => {
+                    // for r_cn in &running_active_connections {
+                    //     r_cn.confirm.send(Broadcast::NewCycle).unwrap();
+                    // }
                     match self.evolve() {
                         AgentEvent::N => tx_report.send(AgentEvent::N).unwrap(),
                         AgentEvent::Y => {
