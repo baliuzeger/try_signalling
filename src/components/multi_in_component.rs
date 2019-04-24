@@ -12,7 +12,7 @@ where C: PassiveImporter + Send + ?Sized,
     pub config: DeviceMode<ChannelsOutFFW<C::Signal>>,
 }
 
-impl<C> struct OutConnectionSet<C: Send + ?Sized> {
+impl<C: Send + ?Sized> OutConnectionSet<C> {
     pub fn config_run(&mut self, mode: RunMode) {
         let arc = self.connection.upgrade().unwrap();
         let mut unlocked_conn = arc.lock().unwrap();
@@ -74,7 +74,7 @@ where C: 'static + PassiveImporter + Send + ?Sized,
         match (mode, &self.mode) {
             (RunMode::Idle, _) => println!("config_run for mode Idle, no effect."),
             (_, RunMode::Idle(ms)) => {
-                self.mode = mode,
+                self.mode = mode;
                 for set in &mut self.connections {
                     set.config_run(mode);
                 }
@@ -112,7 +112,7 @@ where C: 'static + PassiveImporter + Send + ?Sized,
             RunMode::Feedforward => for set in &self.connections {
                 match &set.config {
                     DeviceMode::Idle => (),
-                    DeviceMode::Feedforward(chs) => chs.ch_ffw.send(s).unwrap();
+                    DeviceMode::Feedforward(chs) => chs.ch_ffw.send(s).unwrap(),
                 }
             }
             _ => panic!("PreAgentmodules1 is not Feedforward when feedforward called!"),

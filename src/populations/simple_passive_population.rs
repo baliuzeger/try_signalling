@@ -1,16 +1,15 @@
-use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
-use crate::connections::PassiveConnection;
-use crate::supervisor::{RunMode};
+use crate::operation::{RunMode};
+use crate::operation::passive_device::PassiveDevice;
 
 pub struct SimplePassiveConnectionPopulation<T>
-where T: PassiveConnection<S0, S1>,
+where T: PassiveDevice,
 {
     connections: Vec<Arc<Mutex<T>>>,
 }
 
 impl<T> ConnectionPopulation for SimplePassiveConnectionPopulation<T>
-where T: PassiveConnection<S0, S1>,
+where T: PassiveDevice,
 {
     fn config_run(&mut self, mode: RunMode) {
         // println!("SimplePassiveconnectionpopulation config_run.");
@@ -27,12 +26,11 @@ where T: PassiveConnection<S0, S1>,
 }
 
 impl<T>  SimplePassiveConnectionPopulation<T>
-where T: PassiveConnection<S0, S1>,
+where T: PassiveDevice,
 {
     pub fn new() -> Arc<Mutex<SimplePassiveConnectionPopulation<T>>> {
         Arc::new(Mutex::new(SimplePassiveConnectionPopulation{
             connections: Vec::new(),
-            phantom: PhantomData {},
         }))
     }
 
@@ -44,10 +42,4 @@ where T: PassiveConnection<S0, S1>,
     pub fn connection_by_id(&self, n: usize) -> Arc<Mutex<T>> {
         Arc::clone(&self.connections[n])
     }    
-}
-
-pub struct MixedSimplePassiveConnectionPopulation<T>
-where T: PassiveConnection
-{
-    connections: Vec<Arc<Mutex<T>>>,
 }

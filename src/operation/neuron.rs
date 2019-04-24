@@ -1,14 +1,21 @@
 /// used by Population.runningdevices()
-pub trait ActiveDevice: Device {
-    fn running_passive_devices(&self) -> Vec<RunningDevice<(), Broadcast>>;
-    fn end(&mut self);
-    fn evolve(&mut self) -> AgentEvent;
 
-    // fn run_f(&mut self) -> Box<dyn FnMut(CCReceiver<Broadcast>, CCSender<AgentEvent>)> {
+extern crate crossbeam_channel;
+use crossbeam_channel::Receiver as CCReceiver;
+use crossbeam_channel::Sender as CCSender;
+use crate::operation::{Runnable, RunningSet, Broadcast, Fired};
+
+
+pub trait Neuron: Runnable {
+    fn running_passive_devices(&self) -> Vec<RunningSet<(), Broadcast>>;
+    fn end(&mut self);
+    fn evolve(&mut self) -> Fired;
+
+    // fn run_f(&mut self) -> Box<dyn FnMut(CCReceiver<Broadcast>, CCSender<Fired>)> {
     //     Box::new(|rx_confirm, tx_report| self.run(rx_confirm, tx_report))
     // }
     
-    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<AgentEvent>) {
+    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<Fired>) {
         let running_devices = self.running_passive_devices();
 
         loop {
@@ -31,10 +38,10 @@ pub trait ActiveDevice: Device {
                     //     r_cn.confirm.send(Broadcast::NewCycle).unwrap();
                     // }
                     match self.evolve() {
-                        AgentEvent::N => tx_report.send(AgentEvent::N).unwrap(),
-                        AgentEvent::Y => {
+                        Fired::N => tx_report.send(Fired::N).unwrap(),
+                        Fired::Y => {
                             random_sleep();
-                            tx_report.send(AgentEvent::Y).unwrap();
+                            tx_report.send(Fired::Y).unwrap();
                             // println!("agnt waiting pp confirm FinishCycle.");
                             match rx_confirm.recv().unwrap() {
                                 Broadcast::FinishCycle => {
@@ -46,7 +53,7 @@ pub trait ActiveDevice: Device {
                                         r_cn.report.recv().unwrap();
                                     }
                                     // println!("agnt get conn report finish Prop.");
-                                    tx_report.send(AgentEvent::N).unwrap();
+                                    tx_report.send(Fired::N).unwrap();
                                 },
                                 _ => panic!("sp not confirm by FinishCycle before finish cycle!"),
                             }

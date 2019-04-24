@@ -1,39 +1,35 @@
 use std::sync::{Mutex, Arc};
 use std::collections::HashMap;
 use crate::random_sleep;
-
-
+use crate::operation::{Broadcast, RunMode};
+use crate::operation::neuron_population::NeuronPopulation;
+use crate::operation::passive_population::PassivePopulation;
 
 pub struct Supervisor {
-    pub agent_populations: HashMap<String, Arc<Mutex<dyn AgentPopulation + Send>>>,
-    pub connection_populations: HashMap<String, Arc<Mutex<dyn ConnectionPopulation + Send>>>,
-}
-
-pub enum Broadcast {
-    NewCycle,
-    FinishCycle,
-    Exit,
+    pub active_neuron_populations: HashMap<String, Arc<Mutex<dyn NeuronPopulation + Send>>>,
+    pub passive_populations: HashMap<String, Arc<Mutex<dyn PassivePopulation + Send>>>,
+    // pub active_other_populations: HashMap<String, Arc<Mutex<dyn ActiveOtherPopulation + Send>>>,
 }
 
 impl Supervisor {
-    pub fn add_agent_population<T>(&mut self, key: String, pp: Arc<Mutex<T>>)
-    where T: 'static + AgentPopulation + Send
+    pub fn add_active_population<T>(&mut self, key: String, pp: Arc<Mutex<T>>)
+    where T: 'static + NeuronPopulation + Send
     {
-        self.agent_populations.insert(key, pp);
+        self.active_populations.insert(key, pp);
     }
 
-    pub fn add_connection_population<T>(&mut self, key: String, pp: Arc<Mutex<T>>)
-    where T: 'static + ConnectionPopulation + Send
+    pub fn add_passive_population<T>(&mut self, key: String, pp: Arc<Mutex<T>>)
+    where T: 'static + PassivePopulation + Send
     {
-        self.connection_populations.insert(key, pp);
+        self.passive_populations.insert(key, pp);
     }
     
     pub fn run(&self, mode: RunMode, total_steps: u32) {
         // this version make all connections (only passive supported) into threads controlled by pre-agents.
-        for (_, pp) in &self.connection_populations {
+        for (_, pp) in &self.passive_populations {
             pp.lock().unwrap().config_run(mode);
         }
-        for (_, pp) in &self.agent_populations {
+        for (_, pp) in &self.active_populations {
             pp.lock().unwrap().config_run(mode);
         }
 

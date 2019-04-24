@@ -1,10 +1,12 @@
 use std::sync::{Mutex, Arc};
+use crate::operation::Runnable;
 
-pub mod active_popoulations;
-pub mod passibe_populations;
+pub mod simple_neuron_population;
+pub mod simple_passive_population;
 
-pub trait HoldDevices<T: Device + Send> {
+pub trait HoldDevices {
+    type Device: Runnable + Send;
     fn device_by_id(&self, n: usize) -> Arc<Mutex<T>>;
 }
 
-    
+

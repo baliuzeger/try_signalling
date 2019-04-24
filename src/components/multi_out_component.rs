@@ -12,7 +12,7 @@ where C: PassiveExporter + Send + ?Sized,
     pub config: DeviceMode<ChannelsInFFW<C::Signal>>,
 }
 
-impl<C> struct InConnectionSet<C: Send + ?Sized> {
+impl<C: Send + ?Sized> InConnectionSet<C> {
     pub fn config_run(&mut self, mode: RunMode) {
         let arc = self.connection.upgrade().unwrap();
         let mut unlocked_conn = arc.lock().unwrap();
@@ -89,7 +89,7 @@ where C: 'static + PassiveExporter + Send + ?Sized
         match (mode, &self.mode) {
             (RunMode::Idle, _) => println!("config_run for mode Idle, no effect."),
             (_, RunMode::Idle(ms)) => {
-                self.mode = mode,
+                self.mode = mode;
                 for set in &mut self.connections {
                     set.config_run(mode);
                 }

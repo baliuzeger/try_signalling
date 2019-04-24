@@ -1,12 +1,19 @@
 extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
-use crate::supervisor::{RunMode ,Broadcast};
 
-pub mod active_population;
+pub mod neuron_population;
+// pub mod active_population;
 pub mod passive_population;
-pub mod active_device;
+pub mod neuron;
+// pub mod active_device;
 pub mod passive_device;
+
+pub enum Broadcast {
+    NewCycle,
+    FinishCycle,
+    Exit,
+}
 
 #[derive(Copy, Clone, Debug)]
 pub enum RunMode {
@@ -51,8 +58,7 @@ pub enum Fired {
     N,
 }
 
-/// used by Supervisor.config()
-pub trait Ruunable {
+pub trait Runnable {
     fn config_run(&mut self, mode: RunMode);
     fn config_idle(&mut self);
 }
@@ -64,8 +70,8 @@ pub struct RunningSet<C: Send, R: Send> {
 }
 
 impl<C: Send, R: Send> RunningSet<C, R> {
-    pub fn new_active_device<T>(device: Arc<Mutex<T>>) -> RunningSet<C, R>
-    where T: 'static + ActiveDevice + Send + ?Sized
+    pub fn new_neuron<T>(device: Arc<Mutex<T>>) -> RunningSet<C, R>
+    where T: 'static + Neuron + Send + ?Sized
     {
         // for strict ordering of agent-connection_prop, bounded(1) is chosen.
         let (tx_confirm, rx_confirm) = crossbeam_channel::bounded(1);
@@ -90,7 +96,7 @@ impl<C: Send, R: Send> RunningSet<C, R> {
         }
     }
 
-    pub fn new_active_population<T>(device: Arc<Mutex<T>>) -> RunningSet<C, R>
+    pub fn new_neuron_population<T>(device: Arc<Mutex<T>>) -> RunningSet<C, R>
     where T: 'static + ActivePopulation + Send + ?Sized
     {
         // for strict ordering of agent-connection_prop, bounded(1) is chosen.
@@ -103,8 +109,7 @@ impl<C: Send, R: Send> RunningSet<C, R> {
         }
     }
 
-    // pub fn new<C, R>(f: Box<dyn FnMut(CCReceiver<C>, CCSender<R>)>) -> RunningSet<C, R>
-    // {
+    // pub fn new<F, C, R>(f: Box<dyn FnMut(CCReceiver<C>, CCSender<R>)>) -> RunningSet<C, R> {
     //     // for strict ordering of agent-connection_prop, bounded(1) is chosen.
     //     let (tx_confirm, rx_confirm) = crossbeam_channel::bounded(1);
     //     let (tx_report, rx_report) = crossbeam_channel::bounded(1);
@@ -113,5 +118,5 @@ impl<C: Send, R: Send> RunningSet<C, R> {
     //         confirm: tx_confirm,
     //         report: rx_report,
     //     }
-    // }    
+    // }
 }
