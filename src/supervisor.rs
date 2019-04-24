@@ -48,8 +48,6 @@ impl<I, F> DeviceMode<I, F> {
     }
 }
 
-
-
 pub struct Supervisor {
     pub agent_populations: HashMap<String, Arc<Mutex<dyn AgentPopulation + Send>>>,
     pub connection_populations: HashMap<String, Arc<Mutex<dyn ConnectionPopulation + Send>>>,

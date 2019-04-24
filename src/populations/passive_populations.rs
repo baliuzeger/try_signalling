@@ -3,11 +3,6 @@ use std::sync::{Arc, Mutex};
 use crate::connections::PassiveConnection;
 use crate::supervisor::{RunMode};
 
-pub trait ConnectionPopulation {
-    fn config_run(&mut self, mode: RunMode);
-    fn config_idle(&mut self);
-}
-
 pub struct SimplePassiveConnectionPopulation<T>
 where T: PassiveConnection<S0, S1>,
 {

@@ -1,19 +1,3 @@
-// use std::rc::{Rc};
-// use std::cell::RefCell;
-// use try_signalling::connections::signal_1::Connection as Connection1;
-// use try_signalling::connection_populations::SimplePassiveConnectionPopulation;
-// use try_signalling::connections::signal_2::Connection as Connection2;
-// use try_signalling::connections::signal_1::Connection as Connection1;
-use try_signalling::supervisor::{Supervisor, RunMode};
-use try_signalling::agents::agent_a::Model as AAgent;
-// use try_signalling::agents::agent_b::Model as BAgent;
-use try_signalling::agents::agent_c::Model as CAgent;
-use try_signalling::agent_populations::{SimplePopulation, HoldAgents};
-use try_signalling::connection_populations::SimplePassiveConnectionPopulation;
-use try_signalling::connections::signal_1::connection_1x::Model as Connection1x;
-use try_signalling::connections::signal_1::{FwdPreS1, FwdPostS1};
-use try_signalling::connections::signal_2::connection_2x::Model as Connection2x;
-use try_signalling::connections::signal_2::{FwdPreS2, FwdPostS2};
 use std::sync::Arc;
 use std::collections::HashMap;
 

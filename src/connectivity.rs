@@ -12,7 +12,10 @@ pub trait MultiOut<S: Send>: Generator<S> {
     where C: 'static + Acceptor<S> + Send;
     fn plug_from_passive<C> (&mut self, target: Weak<Mutex<C>>)
     where C: 'static + Acceptor<S> + Send;
-    // fn add_out_active<T: 'static + ActivePropagator + Send> (&mut self, connection: Weak<Mutex<T>>, channel: CCSender<Signal1Gen>);    
+    fn plug_to_active<C> (&mut self, target: Weak<Mutex<C>>)
+    where C: 'static + Acceptor<S> + Send;
+    fn plug_from_active<C> (&mut self, target: Weak<Mutex<C>>)
+    where C: 'static + Acceptor<S> + Send;
 }
 
 pub trait MultiIn<S: Send>: Acceptor<S> {
@@ -23,11 +26,13 @@ pub trait MultiIn<S: Send>: Acceptor<S> {
 }
 
 pub trait SingleOut<S>: Generator<S> {
-
+    // not needed by "Connector" formulation.
+    fn set_channel_ffw(&mut self, channel: Option<CCSender<Signal>>);
 }
 
 pub trait SingleIn<S>: Acceptor<S> {
-
+    // not needed by "Connector" formulation.
+    fn set_channel_ffw(&mut self, channel: Option<CCReceiver<Signal>>);
 }
 
 pub trait OptionOut<S>: Generator<S> {

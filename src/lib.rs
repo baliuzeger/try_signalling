@@ -18,13 +18,10 @@ mod tests {
 }
 
 pub mod supervisor;
-pub mod agent_components;
-pub mod agent_populations;
-pub mod agents;
-pub mod connection_populations;
-pub mod connections;
-pub mod connection_component;
-pub mod device;
+pub mod populations;
+pub mod devices;
+pub mod components;
+pub mod operation;
 
 fn random_sleep() {
     thread::sleep(Duration::from_millis(rand::thread_rng().gen_range(1, 101)));
