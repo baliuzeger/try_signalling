@@ -3,41 +3,12 @@ use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Weak};
 use crate::supervisor::{RunMode, DeviceMode};
+use crate::operation::RunningSet;
+use crate::passive_device::PassiveDevice;
+use crate::connectivity::Acceptor;
 use crate::connections::{RunningPassiveConnection, PassiveImporter};
 
-pub struct OutConnectionSet<C: Send + ?Sized>
-where C: PassiveImporter + Send + ?Sized,
-{
-    pub connection: Weak<Mutex<C>>,
-    pub config: DeviceMode<ChannelsOutFFW<C::Signal>>,
-}
 
-impl<C: Send + ?Sized> OutConnectionSet<C> {
-    pub fn config_run(&mut self, mode: RunMode) {
-        let arc = self.connection.upgrade().unwrap();
-        let mut unlocked_conn = arc.lock().unwrap();
-        self.config = match unlocked_conn.mode() {
-            RunMode::Idle => DeviceMode::Idle,
-            RunMode::Feedforward => {
-                let (tx, rx) = crossbeam_channel::bounded(1);
-                unlocked_conn.set_pre_channel_ffw(Some(rx));
-                DeviceMode::Feedforward(
-                    ChannelsOutFFW {
-                        ch_ffw: tx
-                    }
-                )
-            },
-        }
-    }
-
-    pub fn config_idle(&mut self) {
-        self.config = DeviceMode::Idle;
-    }
-}
-
-struct ChannelsOutFFW<S: Send> {
-    pub ch_ffw: CCSender<S>,
-}
 
 pub struct PreComponent<C>
 where C: 'static + PassiveImporter + Send + ?Sized,

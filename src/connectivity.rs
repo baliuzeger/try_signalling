@@ -1,10 +1,10 @@
 use std::sync::{Arc, Mutex, Weak};
 pub trait Generator<S: Send> {
-
+    fn set_channel_ffw(&mut self, channel: Option<CCSender<Signal>>);
 }
 
 pub trait Acceptor<S: Send> {
-
+    fn set_channel_ffw(&mut self, channel: Option<CCSender<Signal>>);
 }
 
 pub trait MultiOut<S: Send>: Generator<S> {

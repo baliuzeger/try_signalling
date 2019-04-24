@@ -60,6 +60,7 @@ pub enum Fired {
 
 pub trait Runnable {
     fn config_run(&mut self, mode: RunMode);
+    fn config_channels(&mut self);
     fn config_idle(&mut self);
 }
 
