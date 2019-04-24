@@ -1,0 +1,1 @@
+trait PassivePopulation: Device {}

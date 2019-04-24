@@ -1,52 +1,8 @@
-extern crate crossbeam_channel;
-// use crossbeam_channel::Receiver as CCReceiver;
-// use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc};
-// use std::thread;
 use std::collections::HashMap;
-use crate::agents::{AgentEvent};
-use crate::agent_populations::{RunningPopulation, AgentPopulation};
-use crate::connection_populations::{ConnectionPopulation};
-// use crate::connections::PassiveConnection;
 use crate::random_sleep;
 
-#[derive(Copy, Clone, Debug)]
-pub enum RunMode {
-    Idle,
-    Feedforward,
-}
 
-impl RunMode {
-    pub fn mode_from_device<I, F>(m: &DeviceMode<I, F>) -> RunMode {
-        match m {
-            DeviceMode::Idle(_) => RunMode::Idle,
-            DeviceMode::Feedforward(_) => RunMode::Feedforward,
-        }
-    }
-
-    pub fn eq_mode(m1: RunMode, m2: RunMode) -> RunMode {
-        match (m1, m2) {
-            (RunMode::Idle, RunMode::Idle) => RunMode::Idle,
-            (RunMode::Feedforward, RunMode::Feedforward) => RunMode::Feedforward,
-            _ => panic!("Runmode mismatch at check!"),
-        }
-    }
-}
-
-pub enum DeviceMode<F> {
-    Idle,
-    Feedforward(F),
-}
-
-impl<I, F> DeviceMode<I, F> {
-    pub fn eq_mode<I1, F1, I2, F2>(m1: DeviceMode<I1, F1>, m2: DeviceMode<I2, F2>) -> RunMode {
-        match (m1, m2) {
-            (DeviceMode::Idle(_), DeviceMode::Idle(_)) => RunMode::Idle,
-            (DeviceMode::Feedforward(_), DeviceMode::Feedforward(_)) => RunMode::Feedforward,
-            _ => panic!("Runmode mismatch at check!"),
-        }
-    }
-}
 
 pub struct Supervisor {
     pub agent_populations: HashMap<String, Arc<Mutex<dyn AgentPopulation + Send>>>,
