@@ -33,20 +33,20 @@ pub trait MultiIn<S: Send>: Acceptor<S> {
     where C: 'static + Generator<S> + Send;   
 }
 
-pub trait SingleOut<S>: Generator<S> {
+pub trait SingleOut<S: Send>: Generator<S> {
     // not needed by "Connector" formulation.
     fn set_channel_ffw(&mut self, channel: Option<CCSender<S>>);
 }
 
-pub trait SingleIn<S>: Acceptor<S> {
+pub trait SingleIn<S: Send>: Acceptor<S> {
     // not needed by "Connector" formulation.
     fn set_channel_ffw(&mut self, channel: Option<CCReceiver<S>>);
 }
 
-pub trait OptionOut<S>: Generator<S> {
+pub trait OptionOut<S: Send>: Generator<S> {
 
 }
 
-pub trait OptionIn<S>: Acceptor<S> {
+pub trait OptionIn<S: Send>: Acceptor<S> {
 
 }

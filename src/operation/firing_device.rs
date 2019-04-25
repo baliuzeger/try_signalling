@@ -6,7 +6,7 @@ use crossbeam_channel::Sender as CCSender;
 use crate::operation::{RunningSet, Broadcast, Fired, RunMode};
 use crate::random_sleep;
 
-pub trait FiringDevice: Runnable {
+pub trait FiringDevice {
     fn config_run(&mut self, mode: RunMode);
     fn config_channels(&mut self);
     fn config_idle(&mut self);

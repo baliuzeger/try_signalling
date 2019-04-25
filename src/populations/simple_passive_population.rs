@@ -5,13 +5,13 @@ use crate::operation::passive_population::PassivePopulation;
 
 
 pub struct SimplePassiveConnectionPopulation<T>
-where T: PassivePopulation,
+where T: PassiveDevice,
 {
     connections: Vec<Arc<Mutex<T>>>,
 }
 
 impl<T> PassivePopulation for SimplePassiveConnectionPopulation<T>
-where T: PassivePopulation,
+where T: PassiveDevice,
 {
     fn config_run(&mut self, mode: RunMode) {
         // println!("SimplePassiveconnectionpopulation config_run.");

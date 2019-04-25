@@ -1,5 +1,5 @@
 use std::sync::{Mutex, Arc};
-use crate::operation::{RunMode, RunningSet};
+use crate::operation::{RunMode, RunningSet, Broadcast, Fired};
 use crate::operation::firing_device::FiringDevice;
 use crate::operation::firing_population::FiringPopulation;
 use crate::populations::HoldDevices;
@@ -9,7 +9,7 @@ pub struct SimplePopulation<T: FiringDevice> {
 }
 
 impl<T: 'static + FiringDevice + Send> FiringPopulation for SimplePopulation<T> {
-    fn config_run(&self, mode: RunMode) {
+    fn config_run(&mut self, mode: RunMode) {
         for neuron in &self.neurons {
             neuron.lock().unwrap().config_run(mode);
         }
@@ -21,7 +21,7 @@ impl<T: 'static + FiringDevice + Send> FiringPopulation for SimplePopulation<T> 
         }
     }
 
-    fn running_devices(&self) -> Vec<RunningSet> {
+    fn running_devices(&self) -> Vec<RunningSet<Broadcast, Fired>> {
         self.neurons.iter().map(|neuron| RunningSet::new(Arc::clone(&neuron))).collect()
     }
 }

@@ -6,16 +6,16 @@ use crate::operation::firing_population::FiringPopulation;
 use crate::operation::passive_population::PassivePopulation;
 
 pub struct Supervisor {
-    pub active_neuron_populations: HashMap<String, Arc<Mutex<dyn FiringPopulation + Send>>>,
+    pub firing_populations: HashMap<String, Arc<Mutex<dyn FiringPopulation + Send>>>,
     pub passive_populations: HashMap<String, Arc<Mutex<dyn PassivePopulation + Send>>>,
-    // pub active_other_populations: HashMap<String, Arc<Mutex<dyn ActiveOtherPopulation + Send>>>,
+    // pub active_populations: HashMap<String, Arc<Mutex<dyn ActiveOtherPopulation + Send>>>,
 }
 
 impl Supervisor {
-    pub fn add_active_population<T>(&mut self, key: String, pp: Arc<Mutex<T>>)
+    pub fn add_firing_population<T>(&mut self, key: String, pp: Arc<Mutex<T>>)
     where T: 'static + FiringPopulation + Send
     {
-        self.active_populations.insert(key, pp);
+        self.firing_populations.insert(key, pp);
     }
 
     pub fn add_passive_population<T>(&mut self, key: String, pp: Arc<Mutex<T>>)
@@ -29,20 +29,20 @@ impl Supervisor {
         for (_, pp) in &self.passive_populations {
             pp.lock().unwrap().config_run(mode);
         }
-        for (_, pp) in &self.active_populations {
+        for (_, pp) in &self.firing_populations {
             pp.lock().unwrap().config_run(mode);
         }
 
         for (_, pp) in &self.passive_populations {
             pp.lock().unwrap().config_channels();
         }
-        for (_, pp) in &self.active_populations {
+        for (_, pp) in &self.firing_populations {
             pp.lock().unwrap().config_channels();
         }
 
         // println!("start making threads for populations.");
         let mut counter = 0;
-        let running_populations: Vec<_> = self.running_agent_populations();
+        let running_populations: Vec<_> = self.running_firing_populations();
         let mut populations_with_event = Vec::new();
         loop {
             if counter >= total_steps {
@@ -87,10 +87,10 @@ impl Supervisor {
         }
     }
 
-    fn running_agent_populations(&self) -> Vec<RunningSet> {
+    fn running_firing_populations(&self) -> Vec<RunningSet<Broadcast, Fired>> {
         self.agent_populations.iter()
             .map(|(_, pp)| {
-                RunningSet::new(Arc::clone(&pp))
+                RunningSet::(Arc::clone(&pp))
             }).collect()
     }
     

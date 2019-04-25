@@ -6,8 +6,9 @@ use crate::operation::{RunningSet, Fired, Broadcast, RunMode};
 
 pub trait FiringPopulation {
     fn config_run(&mut self, mode: RunMode);
+    fn config_channels(&mut self);
     fn config_idle(&mut self);
-    fn running_devices(&self) -> Vec<RunningSet<Broadcast, ()>>;
+    fn running_devices(&self) -> Vec<RunningSet<Broadcast, Fired>>;
 
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<Fired>) {
         // this version make all connections (only passive supported) into threads controlled by pre-neurons.

@@ -1,25 +1,24 @@
 use std::sync::{Mutex, Weak};
-use crate::operation::{RunningSet, RunMode, DeviceMode};
-use crate::operation::passive_device::PassiveDevice;
-use crate::connectivity::{PassiveAcceptor};
-use crate::components::OutSet;
+use crate::operation::{RunMode, DeviceMode};
+use crate::connectivity::Generator;
+use crate::components::{InSet};
 
-pub struct PreComponent<C, S>
-where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
-      S: Send
-{
-    mode: RunMode,
-    connections: Vec<OutSet<C, S>>,
-}
-
-impl<C, S> PreComponent<C, S>
-where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
+pub struct MultiInComponent<C, S>
+where C: 'static + Generator<S> + Send + ?Sized,
       S: Send,
 {
-    pub fn new() -> PreComponent<C, S> {
-        PreComponent {
+    mode: RunMode,
+    targets: Vec<InSet<C, S>>,
+}
+
+impl<C, S> MultiInComponent<C, S>
+where C: 'static + Generator<S> + Send + ?Sized,
+      S: Send,
+{
+    pub fn new() -> MultiInComponent<C, S> {
+        MultiInComponent {
             mode: RunMode::Idle,
-            connections: Vec::new(),
+            targets: Vec::new(),
         }
     }
 
@@ -27,10 +26,25 @@ where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
         self.mode
     }
     
-    pub fn add_connection(&mut self, connection: Weak<Mutex<C>>) {
+    pub fn ffw_accepted(&self) -> Vec<S> {
+        match &self.mode {
+            RunMode::Feedforward => {
+                self.targets.iter()
+                    .filter_map(|set| {
+                        match &set.config {
+                            DeviceMode::Idle => None,
+                            DeviceMode::Feedforward(chs_in_ffw) => chs_in_ffw.ch_ffw.try_iter()
+                        }
+                    }).flatten().collect()
+            },
+            RunMode::Idle => panic!("PostComponent is Idle when accepted() called!"),
+        }
+    }
+    
+    pub fn add_target(&mut self, target: Weak<Mutex<C>>) {
         match &mut self.mode {
-            RunMode::Idle => self.connections.push(OutSet {
-                connection,
+            RunMode::Idle => self.targets.push(InSet {
+                target,
                 config: DeviceMode::Idle,
             }), 
             _ => panic!("can only add_conntion when DeviceMode::Idle!"),
@@ -42,47 +56,23 @@ where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
             (RunMode::Idle, _) => println!("config_run for mode Idle, no effect."),
             (_, RunMode::Idle) => {
                 self.mode = mode;
-                for set in &mut self.connections {
+                for set in &mut self.targets {
                     set.config_run(mode);
                 }
             }
-            (_, _) => panic!("call fn config_run when not RunMode::Idle!"),
+            (_, _) => panic!("call fn config_run when not DeviceMode::Idle!"),
         }
     }
 
-    pub fn running_connections(&self) -> Vec<RunningSet> {
-        match &self.mode {
-            RunMode::Idle => panic!("call running_connections when agent Idle!"),
-            RunMode::Feedforward => self.connections.iter().filter_map(|set| {
-                match &set.config {
-                    DeviceMode::Idle => None,
-                    DeviceMode::Feedforward(chs) => Some(RunningSet::new(set.connection.upgrade().unwrap())),
-                }
-            }).collect()
-        }
-    }
-    
     pub fn config_idle(&mut self) {
         match &self.mode {
             RunMode::Feedforward => {
                 self.mode = RunMode::Idle;
-                for set in &mut self.connections {
+                for set in &mut self.targets {
                     set.config_idle();
                 }
             }
             RunMode::Idle => println!("call fn config_idle when Idle, no effect."),
-        }
-    }
-
-    pub fn feedforward(&self, s: S) {
-        match &self.mode {
-            RunMode::Feedforward => for set in &self.connections {
-                match &set.config {
-                    DeviceMode::Idle => (),
-                    DeviceMode::Feedforward(chs) => chs.ch_ffw.send(s).unwrap(),
-                }
-            }
-            _ => panic!("PreAgentmodules1 is not Feedforward when feedforward called!"),
         }
     }
 }

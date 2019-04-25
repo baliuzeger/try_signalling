@@ -28,7 +28,7 @@ pub enum RunMode {
 }
 
 impl RunMode {
-    pub fn mode_from_device<I, F>(m: &DeviceMode<I, F>) -> RunMode {
+    pub fn mode_from_device<F>(m: &DeviceMode<F>) -> RunMode {
         match m {
             DeviceMode::Idle => RunMode::Idle,
             DeviceMode::Feedforward(_) => RunMode::Feedforward,
@@ -49,8 +49,8 @@ pub enum DeviceMode<F> {
     Feedforward(F),
 }
 
-impl<I, F> DeviceMode<I, F> {
-    pub fn eq_mode<I1, F1, I2, F2>(m1: DeviceMode<I1, F1>, m2: DeviceMode<I2, F2>) -> RunMode {
+impl<F> DeviceMode<F> {
+    pub fn eq_mode<F1, F2>(m1: DeviceMode<F1>, m2: DeviceMode<F2>) -> RunMode {
         match (m1, m2) {
             (DeviceMode::Idle, DeviceMode::Idle) => RunMode::Idle,
             (DeviceMode::Feedforward(_), DeviceMode::Feedforward(_)) => RunMode::Feedforward,
@@ -77,7 +77,7 @@ pub struct RunningSet<C: Send, R: Send> {
 }
 
 impl<C: Send, R: Send> RunningSet<C, R> {
-    pub fn new_neuron<T>(device: Arc<Mutex<T>>) -> RunningSet<C, R>
+    pub fn new_firing_device<T>(device: Arc<Mutex<T>>) -> RunningSet<C, R>
     where T: 'static + FiringDevice + Send + ?Sized
     {
         // for strict ordering of agent-connection_prop, bounded(1) is chosen.
@@ -90,7 +90,7 @@ impl<C: Send, R: Send> RunningSet<C, R> {
         }
     }
 
-    pub fn new_passive<T>(device: Arc<Mutex<T>>) -> RunningSet<C, R>
+    pub fn new_passive_device<T>(device: Arc<Mutex<T>>) -> RunningSet<C, R>
     where T: 'static + PassiveDevice + Send + ?Sized
     {
         // for strict ordering of agent-connection_prop, bounded(1) is chosen.
@@ -103,7 +103,7 @@ impl<C: Send, R: Send> RunningSet<C, R> {
         }
     }
 
-    pub fn new_neuron_population<T>(device: Arc<Mutex<T>>) -> RunningSet<C, R>
+    pub fn new_firing_population<T>(device: Arc<Mutex<T>>) -> RunningSet<C, R>
     where T: 'static + FiringPopulation + Send + ?Sized
     {
         // for strict ordering of agent-connection_prop, bounded(1) is chosen.
