@@ -1,6 +1,3 @@
-extern crate crossbeam_channel;
-use crossbeam_channel::Receiver as CCReceiver;
-use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Weak};
 use crate::operation::{RunningSet, RunMode, DeviceMode};
 use crate::connectivity::Generator;

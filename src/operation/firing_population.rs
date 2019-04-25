@@ -2,9 +2,11 @@ extern crate crossbeam_channel;
 use crate::random_sleep;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
-use crate::operation::{Runnable, RunningSet, Fired, Broadcast};
+use crate::operation::{RunningSet, Fired, Broadcast, RunMode};
 
-pub trait FiringPopulation: Runnable {
+pub trait FiringPopulation {
+    fn config_run(&mut self, mode: RunMode);
+    fn config_idle(&mut self);
     fn running_devices(&self) -> Vec<RunningSet<Broadcast, ()>>;
 
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<Fired>) {

@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{Mutex, Weak};
 use crate::operation::passive_device::PassiveDevice;
 extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;

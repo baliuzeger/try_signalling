@@ -1,11 +1,14 @@
-use crate::operation::{RunMode, Runnable, Broadcast};
+use crate::operation::{RunMode, Broadcast};
 extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use crate::random_sleep;
 
 /// used by Components.runningdevices()
-pub trait PassiveDevice: Runnable {
+pub trait PassiveDevice {
+    fn config_run(&mut self, mode: RunMode);
+    fn config_channels(&mut self);
+    fn config_idle(&mut self);
     fn mode(&self) -> RunMode;
     fn respond(&self);
 

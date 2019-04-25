@@ -3,10 +3,13 @@
 extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
-use crate::operation::{Runnable, RunningSet, Broadcast, Fired};
+use crate::operation::{RunningSet, Broadcast, Fired, RunMode};
 use crate::random_sleep;
 
 pub trait FiringDevice: Runnable {
+    fn config_run(&mut self, mode: RunMode);
+    fn config_channels(&mut self);
+    fn config_idle(&mut self);
     fn running_passive_devices(&self) -> Vec<RunningSet<(), Broadcast>>;
     fn end(&mut self);
     fn evolve(&mut self) -> Fired;

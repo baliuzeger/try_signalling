@@ -6,6 +6,7 @@ use std::thread;
 use std::thread::JoinHandle;
 use crate::operation::firing_device::FiringDevice;
 use crate::operation::passive_device::PassiveDevice;
+use crate::operation::firing_population::FiringPopulation;
 
 pub mod firing_population;
 // pub mod active_population;
