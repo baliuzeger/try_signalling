@@ -1,19 +1,19 @@
 use std::sync::{Mutex, Arc};
 use std::collections::HashMap;
 use crate::random_sleep;
-use crate::operation::{Broadcast, RunMode};
-use crate::operation::neuron_population::NeuronPopulation;
+use crate::operation::{Broadcast, RunMode, Fired, RunningSet};
+use crate::operation::firing_population::FiringPopulation;
 use crate::operation::passive_population::PassivePopulation;
 
 pub struct Supervisor {
-    pub active_neuron_populations: HashMap<String, Arc<Mutex<dyn NeuronPopulation + Send>>>,
+    pub active_neuron_populations: HashMap<String, Arc<Mutex<dyn FiringPopulation + Send>>>,
     pub passive_populations: HashMap<String, Arc<Mutex<dyn PassivePopulation + Send>>>,
     // pub active_other_populations: HashMap<String, Arc<Mutex<dyn ActiveOtherPopulation + Send>>>,
 }
 
 impl Supervisor {
     pub fn add_active_population<T>(&mut self, key: String, pp: Arc<Mutex<T>>)
-    where T: 'static + NeuronPopulation + Send
+    where T: 'static + FiringPopulation + Send
     {
         self.active_populations.insert(key, pp);
     }
@@ -61,7 +61,7 @@ impl Supervisor {
                     r_pp.confirm.send(Broadcast::NewCycle).unwrap();
                 }
                 for r_pp in &running_populations {
-                    if let AgentEvent::Y = r_pp.report.recv().unwrap() {
+                    if let Fired::Y = r_pp.report.recv().unwrap() {
                         populations_with_event.push((r_pp.confirm.clone(), r_pp.report.clone()));
                     }
                 }
@@ -71,8 +71,8 @@ impl Supervisor {
                 // println!("sp waiting pp FinishCycle.");
                 for pp_e in &populations_with_event {
                     match pp_e.1.recv().unwrap() {
-                        AgentEvent::N => (),
-                        AgentEvent::Y => panic!("pp report Event after FinishCycle!")
+                        Fired::N => (),
+                        Fired::Y => panic!("pp report Event after FinishCycle!")
                     }
                 }
                 // println!("sp get pp report FinishCycle.");
@@ -87,10 +87,10 @@ impl Supervisor {
         }
     }
 
-    fn running_agent_populations(&self) -> Vec<RunningPopulation> {
+    fn running_agent_populations(&self) -> Vec<RunningSet> {
         self.agent_populations.iter()
             .map(|(_, pp)| {
-                RunningPopulation::new(Arc::clone(&pp))
+                RunningSet::new(Arc::clone(&pp))
             }).collect()
     }
     

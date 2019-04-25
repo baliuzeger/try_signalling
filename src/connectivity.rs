@@ -1,11 +1,19 @@
 use std::sync::{Arc, Mutex, Weak};
+use crate::operation::passive_device::PassiveDevice;
+extern crate crossbeam_channel;
+use crossbeam_channel::Receiver as CCReceiver;
+use crossbeam_channel::Sender as CCSender;
+
 pub trait Generator<S: Send> {
-    fn set_channel_ffw(&mut self, channel: Option<CCSender<Signal>>);
+    fn set_channel_ffw(&mut self, channel: Option<CCSender<S>>);
 }
 
 pub trait Acceptor<S: Send> {
-    fn set_channel_ffw(&mut self, channel: Option<CCSender<Signal>>);
+    fn set_channel_ffw(&mut self, channel: Option<CCSender<S>>);
 }
+
+pub trait PassiveAcceptor<S: Send>: Acceptor<S> + PassiveDevice {}
+
 
 pub trait MultiOut<S: Send>: Generator<S> {
     fn plug_to_passive<C> (&mut self, target: Weak<Mutex<C>>)
@@ -27,12 +35,12 @@ pub trait MultiIn<S: Send>: Acceptor<S> {
 
 pub trait SingleOut<S>: Generator<S> {
     // not needed by "Connector" formulation.
-    fn set_channel_ffw(&mut self, channel: Option<CCSender<Signal>>);
+    fn set_channel_ffw(&mut self, channel: Option<CCSender<S>>);
 }
 
 pub trait SingleIn<S>: Acceptor<S> {
     // not needed by "Connector" formulation.
-    fn set_channel_ffw(&mut self, channel: Option<CCReceiver<Signal>>);
+    fn set_channel_ffw(&mut self, channel: Option<CCReceiver<S>>);
 }
 
 pub trait OptionOut<S>: Generator<S> {

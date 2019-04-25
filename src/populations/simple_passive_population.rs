@@ -1,15 +1,17 @@
 use std::sync::{Arc, Mutex};
 use crate::operation::{RunMode};
 use crate::operation::passive_device::PassiveDevice;
+use crate::operation::passive_population::PassivePopulation;
+
 
 pub struct SimplePassiveConnectionPopulation<T>
-where T: PassiveDevice,
+where T: PassivePopulation,
 {
     connections: Vec<Arc<Mutex<T>>>,
 }
 
-impl<T> ConnectionPopulation for SimplePassiveConnectionPopulation<T>
-where T: PassiveDevice,
+impl<T> PassivePopulation for SimplePassiveConnectionPopulation<T>
+where T: PassivePopulation,
 {
     fn config_run(&mut self, mode: RunMode) {
         // println!("SimplePassiveconnectionpopulation config_run.");

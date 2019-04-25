@@ -4,7 +4,7 @@ use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use crate::operation::{Runnable, RunningSet, Fired, Broadcast};
 
-pub trait NeuronPopulation: Runnable {
+pub trait FiringPopulation: Runnable {
     fn running_devices(&self) -> Vec<RunningSet<Broadcast, ()>>;
 
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<Fired>) {

@@ -1,3 +1,3 @@
 use crate::operation::Runnable;
 
-trait PassivePopulation: Runnable {}
+pub trait PassivePopulation: Runnable {}

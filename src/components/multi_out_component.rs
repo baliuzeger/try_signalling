@@ -1,9 +1,10 @@
 extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
-use std::sync::{Weak, Mutex};
-use crate::supervisor::{RunMode, DeviceMode};
-use crate::connections::{PassiveExporter};
+use std::sync::{Mutex, Weak};
+use crate::operation::{RunningSet, RunMode, DeviceMode};
+use crate::connectivity::Generator;
+use crate::components::{InSet};
 
 pub struct InConnectionSet<C: Send + ?Sized>
 where C: PassiveExporter + Send + ?Sized,

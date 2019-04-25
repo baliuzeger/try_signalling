@@ -4,24 +4,28 @@ extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use crate::operation::{RunMode, DeviceMode};
+use crate::connectivity::{Acceptor, Generator};
 
 pub mod multi_in_component;
 pub mod multi_out_component;
 pub mod single_in_component;
 pub mod single_out_component;
 
-pub struct OutSet<C: Send + ?Sized>
-where C: Acceptor<> + Send + ?Sized,
+pub struct OutSet<C, S>
+where C: Acceptor<S> + Send + ?Sized,
+      S: Send,
 {
-    pub connection: Weak<Mutex<C>>,
-    pub config: DeviceMode<ChannelsOutFFW<C::Signal>>,
-    pub linker: Arc<Mutex<>>,
+    pub target: Weak<Mutex<C>>,
+    pub config: DeviceMode<ChannelsOutFFW<S>>,
+    pub linker: Arc<Mutex<Linker<S>>>,
 }
 
-impl<C: Send + ?Sized> OutSet<C> {
-    pub fn config_run(&mut self, mode: RunMode) {
-        let arc = self.connection.upgrade().unwrap();
-        self.config = match target.mode() {
+impl<C, S> OutSet<C, S>
+where C: Acceptor<S> + Send + ?Sized,
+      S: Send,
+{
+    pub fn config_channels(&mut self, mode: RunMode) {
+        self.config = match self.target.upgrade().unwrap().mode() {
             RunMode::Idle => DeviceMode::Idle,
             RunMode::Feedforward => {
                 let mut lnkr = self.linker.lock().unwrap();
@@ -39,7 +43,43 @@ impl<C: Send + ?Sized> OutSet<C> {
 
     pub fn config_idle(&mut self) {
         self.config = DeviceMode::Idle;
-        self.connector.lock().unwrap().idle();
+        self.linker.lock().unwrap().config_idle();
+    }
+}
+
+pub struct InSet<C, S>
+where C: Generator<S> + Send + ?Sized,
+      S: Send,
+{
+    pub target: Weak<Mutex<C>>,
+    pub config: DeviceMode<ChannelsInFFW<S>>,
+    pub linker: Arc<Mutex<Linker<S>>>,
+}
+
+impl<C, S> InSet<C, S>
+where C: Generator<S> + Send + ?Sized,
+      S: Send,
+{
+    pub fn config_channels(&mut self, mode: RunMode) {
+        self.config = match self.target.upgrade().unwrap().mode() {
+            RunMode::Idle => DeviceMode::Idle,
+            RunMode::Feedforward => {
+                let mut lnkr = self.linker.lock().unwrap();
+                DeviceMode::Feedforward(
+                    ChannelsOutFFW {
+                        ch_ffw: match lnkr.mode() {
+                            RunMode::Idle => lnkr.gen_post(),
+                            RunMode::Feedforward => lnkr.take_post(),
+                        }
+                    }
+                )
+            },
+        }
+    }
+
+    pub fn config_idle(&mut self) {
+        self.config = DeviceMode::Idle;
+        self.linker.lock().unwrap().config_idle();
     }
 }
 
@@ -71,7 +111,7 @@ impl<S: Send> Linker<S> {
     fn gen_post(&mut self) -> CCReceiver<S> {
         let (tx, rx) = crossbeam_channel::unbounded();
         self.config = DeviceMode::Feedforward(LinksFFW {
-            pre: Some(tx)
+            pre: Some(tx),
             post: None,
         });
         rx
@@ -79,9 +119,13 @@ impl<S: Send> Linker<S> {
 
     fn take_post(&mut self) -> CCReceiver<S> {
         match &mut self.config {
-            DeviceMode::Idle => panic!("Linker is idle when take_pre!"),
+            DeviceMode::Idle => panic!("Linker is idle when take_post!"),
             DeviceMode::Feedforward(lnks) => lnks.post.take(),
         }   
+    }
+
+    fn config_idle(&mut self) {
+        self.config = DeviceMode::Idle;
     }
     
 }
@@ -93,4 +137,8 @@ struct LinksFFW<S: Send> {
 
 struct ChannelsOutFFW<S: Send> {
     pub ch_ffw: CCSender<S>,
+}
+
+struct ChannelsInFFW<S: Send> {
+    pub ch_ffw: CCReceiver<S>,
 }

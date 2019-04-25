@@ -4,9 +4,9 @@ extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use crate::operation::{Runnable, RunningSet, Broadcast, Fired};
+use crate::random_sleep;
 
-
-pub trait Neuron: Runnable {
+pub trait FiringDevice: Runnable {
     fn running_passive_devices(&self) -> Vec<RunningSet<(), Broadcast>>;
     fn end(&mut self);
     fn evolve(&mut self) -> Fired;

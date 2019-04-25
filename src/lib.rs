@@ -22,6 +22,7 @@ pub mod populations;
 pub mod devices;
 pub mod components;
 pub mod operation;
+pub mod connectivity;
 
 fn random_sleep() {
     thread::sleep(Duration::from_millis(rand::thread_rng().gen_range(1, 101)));

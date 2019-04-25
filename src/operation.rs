@@ -1,11 +1,16 @@
+use std::sync::{Arc, Mutex};
 extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
+use std::thread;
+use std::thread::JoinHandle;
+use crate::operation::firing_device::FiringDevice;
+use crate::operation::passive_device::PassiveDevice;
 
-pub mod neuron_population;
+pub mod firing_population;
 // pub mod active_population;
 pub mod passive_population;
-pub mod neuron;
+pub mod firing_device;
 // pub mod active_device;
 pub mod passive_device;
 
@@ -24,7 +29,7 @@ pub enum RunMode {
 impl RunMode {
     pub fn mode_from_device<I, F>(m: &DeviceMode<I, F>) -> RunMode {
         match m {
-            DeviceMode::Idle(_) => RunMode::Idle,
+            DeviceMode::Idle => RunMode::Idle,
             DeviceMode::Feedforward(_) => RunMode::Feedforward,
         }
     }
@@ -46,7 +51,7 @@ pub enum DeviceMode<F> {
 impl<I, F> DeviceMode<I, F> {
     pub fn eq_mode<I1, F1, I2, F2>(m1: DeviceMode<I1, F1>, m2: DeviceMode<I2, F2>) -> RunMode {
         match (m1, m2) {
-            (DeviceMode::Idle(_), DeviceMode::Idle(_)) => RunMode::Idle,
+            (DeviceMode::Idle, DeviceMode::Idle) => RunMode::Idle,
             (DeviceMode::Feedforward(_), DeviceMode::Feedforward(_)) => RunMode::Feedforward,
             _ => panic!("Runmode mismatch at check!"),
         }
@@ -72,7 +77,7 @@ pub struct RunningSet<C: Send, R: Send> {
 
 impl<C: Send, R: Send> RunningSet<C, R> {
     pub fn new_neuron<T>(device: Arc<Mutex<T>>) -> RunningSet<C, R>
-    where T: 'static + Neuron + Send + ?Sized
+    where T: 'static + FiringDevice + Send + ?Sized
     {
         // for strict ordering of agent-connection_prop, bounded(1) is chosen.
         let (tx_confirm, rx_confirm) = crossbeam_channel::bounded(1);
@@ -98,7 +103,7 @@ impl<C: Send, R: Send> RunningSet<C, R> {
     }
 
     pub fn new_neuron_population<T>(device: Arc<Mutex<T>>) -> RunningSet<C, R>
-    where T: 'static + ActivePopulation + Send + ?Sized
+    where T: 'static + FiringPopulation + Send + ?Sized
     {
         // for strict ordering of agent-connection_prop, bounded(1) is chosen.
         let (tx_confirm, rx_confirm) = crossbeam_channel::bounded(1);
