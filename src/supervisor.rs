@@ -79,18 +79,18 @@ impl Supervisor {
                 counter += 1;
             }
         }
-        for (_, pp) in &self.connection_populations {
+        for (_, pp) in &self.passive_populations {
             pp.lock().unwrap().config_idle();
         }
-        for (_, pp) in &self.agent_populations {
+        for (_, pp) in &self.firing_populations {
             pp.lock().unwrap().config_idle();
         }
     }
 
     fn running_firing_populations(&self) -> Vec<RunningSet<Broadcast, Fired>> {
-        self.agent_populations.iter()
+        self.firing_populations.iter()
             .map(|(_, pp)| {
-                RunningSet::(Arc::clone(&pp))
+                RunningSet::new(pp.lock().unwrap().run_f())
             }).collect()
     }
     

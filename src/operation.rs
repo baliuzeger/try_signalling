@@ -116,14 +116,14 @@ impl<C: Send, R: Send> RunningSet<C, R> {
         }
     }
 
-    // pub fn new<F, C, R>(f: Box<dyn FnMut(CCReceiver<C>, CCSender<R>)>) -> RunningSet<C, R> {
-    //     // for strict ordering of agent-connection_prop, bounded(1) is chosen.
-    //     let (tx_confirm, rx_confirm) = crossbeam_channel::bounded(1);
-    //     let (tx_report, rx_report) = crossbeam_channel::bounded(1);
-    //     RunningSet {
-    //         instance: thread::spawn(move || {*f(rx_confirm, tx_report)}),
-    //         confirm: tx_confirm,
-    //         report: rx_report,
-    //     }
-    // }
+    pub fn new(f: Box<dyn FnMut(CCReceiver<C>, CCSender<R>)>) -> RunningSet<C, R> {
+        // for strict ordering of agent-connection_prop, bounded(1) is chosen.
+        let (tx_confirm, rx_confirm) = crossbeam_channel::bounded(1);
+        let (tx_report, rx_report) = crossbeam_channel::bounded(1);
+        RunningSet {
+            instance: thread::spawn(move || {*f(rx_confirm, tx_report)}),
+            confirm: tx_confirm,
+            report: rx_report,
+        }
+    }
 }

@@ -42,13 +42,14 @@ where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
     pub fn config_run(&mut self, mode: RunMode) {
         match (mode, &self.mode) {
             (RunMode::Idle, _) => println!("config_run for mode Idle, no effect."),
-            (_, RunMode::Idle) => {
-                self.mode = mode;
-                for set in &mut self.passive_targets {
-                    set.config_run(mode);
-                }
-            }
+            (_, RunMode::Idle) => self.mode = mode,
             (_, _) => panic!("call fn config_run when not RunMode::Idle!"),
+        }
+    }
+    
+    pub fn config_channels(&mut self) {
+        for set in &mut self.passive_targets {
+            set.config_channels(self.mode());
         }
     }
 

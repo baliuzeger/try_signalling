@@ -4,44 +4,50 @@ use crate::operation::passive_device::PassiveDevice;
 use crate::operation::passive_population::PassivePopulation;
 
 
-pub struct SimplePassiveConnectionPopulation<T>
+pub struct SimplePassivePopulation<T>
 where T: PassiveDevice,
 {
-    connections: Vec<Arc<Mutex<T>>>,
+    devices: Vec<Arc<Mutex<T>>>,
 }
 
-impl<T> PassivePopulation for SimplePassiveConnectionPopulation<T>
+impl<T> PassivePopulation for SimplePassivePopulation<T>
 where T: PassiveDevice,
 {
     fn config_run(&mut self, mode: RunMode) {
         // println!("SimplePassiveconnectionpopulation config_run.");
-        for conn in &self.connections {
-            conn.lock().unwrap().config_run(mode);
+        for device in &self.devices {
+            device.lock().unwrap().config_run(mode);
+        }
+    }
+
+    fn config_channels(&mut self) {
+        for device in &self.devices {
+            device.lock().unwrap().config_channels();
         }
     }
     
     fn config_idle(&mut self) {
-        for conn in &self.connections {
-            conn.lock().unwrap().config_idle();
+        for device in &self.devices {
+            device.lock().unwrap().config_idle();
         }
     }
 }
 
-impl<T>  SimplePassiveConnectionPopulation<T>
+impl<T>  SimplePassivePopulation<T>
 where T: PassiveDevice,
 {
-    pub fn new() -> Arc<Mutex<SimplePassiveConnectionPopulation<T>>> {
-        Arc::new(Mutex::new(SimplePassiveConnectionPopulation{
-            connections: Vec::new(),
+    pub fn new() -> Arc<Mutex<SimplePassivePopulation<T>>> {
+        Arc::new(Mutex::new(SimplePassivePopulation{
+            devices: Vec::new(),
         }))
     }
 
-    pub fn add_connection(&mut self, conn: Arc<Mutex<T>>) {
-        self.connections.push(conn);
+    pub fn add(&mut self, device: Arc<Mutex<T>>) {
+        self.devices.push(device);
     }
 
     
-    pub fn connection_by_id(&self, n: usize) -> Arc<Mutex<T>> {
-        Arc::clone(&self.connections[n])
+    pub fn device_by_id(&self, n: usize) -> Arc<Mutex<T>> {
+        Arc::clone(&self.devices[n])
     }    
 }

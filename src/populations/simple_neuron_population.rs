@@ -15,6 +15,12 @@ impl<T: 'static + FiringDevice + Send> FiringPopulation for SimplePopulation<T> 
         }
     }
 
+    fn config_channels(&mut self) {
+        for neuron in &self.neurons {
+            neuron.lock().unwrap().config_channels();
+        }
+    }
+    
     fn config_idle(&mut self) {
         for neuron in &self.neurons {
             neuron.lock().unwrap().config_idle();
@@ -22,7 +28,7 @@ impl<T: 'static + FiringDevice + Send> FiringPopulation for SimplePopulation<T> 
     }
 
     fn running_devices(&self) -> Vec<RunningSet<Broadcast, Fired>> {
-        self.neurons.iter().map(|neuron| RunningSet::new(Arc::clone(&neuron))).collect()
+        self.neurons.iter().map(|neuron| RunningSet::new(neuron.run_f())).collect()
     }
 }
 

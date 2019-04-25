@@ -9,7 +9,10 @@ pub trait FiringPopulation {
     fn config_channels(&mut self);
     fn config_idle(&mut self);
     fn running_devices(&self) -> Vec<RunningSet<Broadcast, Fired>>;
-
+    fn run_f(&mut self) -> Box<dyn FnMut(CCReceiver<Broadcast>, CCSender<Fired>)> {
+        |rx_confirm, tx_report| self.run(rx_confirm, tx_report)
+    }
+    
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<Fired>) {
         // this version make all connections (only passive supported) into threads controlled by pre-neurons.
         let running_neurons = self.running_neurons();
