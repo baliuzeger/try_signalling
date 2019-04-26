@@ -27,8 +27,6 @@ pub struct FwdPostS1 {
 //     pub msg_prop: i32,
 // }
 
-
-
 pub type PreAgentComponentS1 = PreComponent<dyn PassiveConnection<FwdPreS1, FwdPostS1> + Send, FwdPreS1, FwdPostS1>;
 pub type PostAgentComponentS1 = PostComponent<dyn PassiveConnection<FwdPreS1, FwdPostS1> + Send, FwdPreS1, FwdPostS1>;
 pub type ConnectionComponentS1<G, A> = ConnectionComponent<G, A, FwdPreS1, FwdPostS1>;

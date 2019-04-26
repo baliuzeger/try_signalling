@@ -4,6 +4,10 @@ extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 
+pub mod s1_pre;
+pub mod s1_post;
+// pub mod signal_2;
+
 pub trait Generator<S: Send> {
     fn set_channel_ffw(&mut self, channel: Option<CCSender<S>>);
 }
