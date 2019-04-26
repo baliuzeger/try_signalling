@@ -29,11 +29,11 @@ impl<C, S> OutSet<C, S>
 where C: Acceptor<S> + Send + ?Sized,
       S: Send,
 {
-    pub fn new(target: Weak<Mutex<C>>) -> OutSet<C, S> {
+    pub fn new(target: Weak<Mutex<C>>, linker: Arc<Mutex<Linker<S>>>) -> OutSet<C, S> {
         OutSet {
             target,
             channels: DeviceMode::Idle,
-            linker: Arc::new(Mutex::new(Linker::new())),
+            linker,
         }
     }
 
@@ -72,11 +72,11 @@ impl<C, S> InSet<C, S>
 where C: Generator<S> + Send + ?Sized,
       S: Send,
 {
-    pub fn new(target: Weak<Mutex<C>>) -> InSet<C, S> {
+    pub fn new(target: Weak<Mutex<C>>, Arc<Mutex<Linker<S>>>) -> InSet<C, S> {
         InSet {
             target,
             channels: DeviceMode::Idle,
-            linker: Arc::new(Mutex::new(Linker::new())),
+            linker,
         }
     }
 
@@ -109,12 +109,12 @@ pub struct Linker<S: Send> {
 }
 
 impl<S: Send> Linker<S> {
-    pub fn new() -> Linker<S> {
-        Linker {
+    pub fn new() -> Arc<Mutex<Linker<S>>> {
+        Arc::new(Mutex::new(Linker {
             pre_mode: RunMode::Idle,
             post_mode: RunMode::Idle,
             tmp: DeviceMode::Idle,
-        }
+        }))
     }
 
     pub fn make_pre(&mut self) -> DeviceMode<ChannelsOutFFW<S>> {

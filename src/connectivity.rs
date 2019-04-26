@@ -9,21 +9,21 @@ pub mod s1_post;
 // pub mod signal_2;
 
 pub trait Generator<S: Send> {
-    fn set_channel_ffw(&mut self, channel: Option<CCSender<S>>);
 }
 
 pub trait Acceptor<S: Send> {
-    fn set_channel_ffw(&mut self, channel: Option<CCSender<S>>);
 }
 
 pub trait PassiveAcceptor<S: Send>: Acceptor<S> + PassiveDevice {}
 
+pub trait ActiveAcceptor<S: Send>: Acceptor<S> + ActiveDevice {} // but how about firingdevice?
+
 
 pub trait MultiOut<S: Send>: Generator<S> {
     fn plug_to_passive<C> (&mut self, target: Weak<Mutex<C>>)
-    where C: 'static + Acceptor<S> + Send;
+    where C: 'static + PassiveAcceptor<S> + Send;
     fn plug_from_passive<C> (&mut self, target: Weak<Mutex<C>>)
-    where C: 'static + Acceptor<S> + Send;
+    where C: 'static + PassiveAcceptor<S> + Send;
     fn plug_to_active<C> (&mut self, target: Weak<Mutex<C>>)
     where C: 'static + Acceptor<S> + Send;
     fn plug_from_active<C> (&mut self, target: Weak<Mutex<C>>)
@@ -38,13 +38,9 @@ pub trait MultiIn<S: Send>: Acceptor<S> {
 }
 
 pub trait SingleOut<S: Send>: Generator<S> {
-    // not needed by "Connector" formulation.
-    fn set_channel_ffw(&mut self, channel: Option<CCSender<S>>);
 }
 
 pub trait SingleIn<S: Send>: Acceptor<S> {
-    // not needed by "Connector" formulation.
-    fn set_channel_ffw(&mut self, channel: Option<CCReceiver<S>>);
 }
 
 pub trait OptionOut<S: Send>: Generator<S> {

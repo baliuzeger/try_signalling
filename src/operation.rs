@@ -4,9 +4,10 @@ use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use std::thread;
 use std::thread::JoinHandle;
-use crate::operation::firing_device::FiringDevice;
-use crate::operation::passive_device::PassiveDevice;
-use crate::operation::firing_population::FiringPopulation;
+pub use crate::operation::firing_device::FiringDevice;
+pub use crate::operation::passive_device::PassiveDevice;
+pub use crate::operation::firing_population::FiringPopulation;
+pub use crate::operation::passive_population::PassivePopulation;
 
 pub mod firing_population;
 // pub mod active_population;
