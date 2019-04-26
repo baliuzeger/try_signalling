@@ -9,7 +9,7 @@ where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
       //CA: 'static + ActiveAcceptor<S> + Send + ?Sized,
 {
     mode: RunMode,
-    passive_target_sets: Vec<OutSet<C, S>>,
+    passive_out_sets: Vec<OutSet<C, S>>,
     // active_taegets: Vec<OutSet<CA, S>>
 }
 
@@ -20,7 +20,7 @@ where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
     pub fn new() -> MultiOutComponent<C, S> {
         MultiOutComponent {
             mode: RunMode::Idle,
-            passive_target_sets: Vec::new(),
+            passive_out_sets: Vec::new(),
         }
     }
 
@@ -30,7 +30,7 @@ where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
     
     pub fn add_passive_target(&mut self, target: Weak<Mutex<C>>) {
         match &mut self.mode {
-            RunMode::Idle => self.passive_target_sets.push(OutSet::new(target)), 
+            RunMode::Idle => self.passive_out_sets.push(OutSet::new(target)), 
             _ => panic!("can only add_conntion when DeviceMode::Idle!"),
         }
     }
@@ -46,13 +46,13 @@ where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
 
     fn config_mode_to(&mut self, mode: RunMode) {
         self.mode = mode;
-        for set in &mut self.passive_target_sets {
+        for set in &mut self.passive_out_sets {
             set.config_mode(mode);
         }
     }
     
     pub fn config_channels(&mut self) {
-        for set in &mut self.passive_target_sets {
+        for set in &mut self.passive_out_sets {
             set.config_channels();
         }
     }
@@ -61,7 +61,7 @@ where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
         match &self.mode {
             RunMode::Idle => panic!("call running_passive_targets when agent Idle!"),
             RunMode::Feedforward => {
-                self.passive_target_sets.iter()
+                self.passive_out_sets.iter()
                     .filter_map(|set| match set.channels {
                         DeviceMode::Idle => None,
                         DeviceMode::Feedforward(_) => Some(RunningSet::<Broadcast, ()>::new_passive_device(set.target.upgrade().unwrap()))
@@ -74,7 +74,7 @@ where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
         match &self.mode {
             RunMode::Feedforward => {
                 self.mode = RunMode::Idle;
-                for set in &mut self.passive_target_sets {
+                for set in &mut self.passive_out_sets {
                     set.config_idle();
                 }
             }
@@ -84,12 +84,9 @@ where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
 
     pub fn feedforward(&self, s: S) {
         match &self.mode {
-            RunMode::Feedforward => for set in &self.passive_target_sets {
-                match &set.channels {
-                    DeviceMode::Idle => (),
-                    DeviceMode::Feedforward(chs) => chs.ch_ffw.send(s).unwrap(),
-                }
-            }
+            RunMode::Feedforward => for set in &self.passive_out_sets {
+                set.feedforward(s);
+            },
             _ => panic!("PreAgentmodules1 is not Feedforward when feedforward called!"),
         }
     }

@@ -9,7 +9,7 @@ use crate::connectivity::{Acceptor, Generator};
 pub use multi_in_component::MultiInComponent;
 pub use multi_out_component::MultiOutComponent;
 pub use single_in_component::SingleInComponent;
-pub use single_out_component::SinglrOutComponent;
+pub use single_out_component::SingleOutComponent;
 
 mod multi_in_component;
 mod multi_out_component;
@@ -50,6 +50,13 @@ where C: Acceptor<S> + Send + ?Sized,
         self.channels = DeviceMode::Idle;
         self.linker.lock().unwrap().config_idle();
     }
+
+    pub fn feedforward(&self, s: S) {
+        match &self.channels {
+            DeviceMode::Idle => (),
+            DeviceMode::Feedforward(chs) => chs.ch_ffw.send(s).unwrap(),
+        }
+    }
 }
 
 pub struct InSet<C, S>
@@ -87,8 +94,8 @@ where C: Generator<S> + Send + ?Sized,
         self.linker.lock().unwrap().config_idle();
     }
 
-    pub fn ffw_accepted_iter(&self) -> Opetion<CCTryIter<S>> {
-        match &set.channels {
+    pub fn ffw_accepted_iter(&self) -> Option<CCTryIter<S>> {
+        match &self.channels {
             DeviceMode::Idle => None,
             DeviceMode::Feedforward(chs_in_ffw) => Some(chs_in_ffw.ch_ffw.try_iter()),
         }

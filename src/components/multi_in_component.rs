@@ -1,5 +1,5 @@
 use std::sync::{Mutex, Weak};
-use crate::operation::{RunMode, DeviceMode};
+use crate::operation::{RunMode};
 use crate::connectivity::Generator;
 use crate::components::{InSet};
 
@@ -8,7 +8,7 @@ where C: 'static + Generator<S> + Send + ?Sized,
       S: Send,
 {
     mode: RunMode,
-    target_sets: Vec<InSet<C, S>>,
+    in_sets: Vec<InSet<C, S>>,
 }
 
 impl<C, S> MultiInComponent<C, S>
@@ -18,7 +18,7 @@ where C: 'static + Generator<S> + Send + ?Sized,
     pub fn new() -> MultiInComponent<C, S> {
         MultiInComponent {
             mode: RunMode::Idle,
-            target_sets: Vec::new(),
+            in_sets: Vec::new(),
         }
     }
 
@@ -29,16 +29,17 @@ where C: 'static + Generator<S> + Send + ?Sized,
     pub fn ffw_accepted(&self) -> Vec<S> {
         match &self.mode {
             RunMode::Feedforward => {
-                self.target_sets.iter()
-                    .filter_map(|set| set.ffw_accepted_iter()).flatten().collect()
+                self.in_sets.iter()
+                    .filter_map(|set| set.ffw_accepted_iter())
+                    .flatten().collect()
             },
-            RunMode::Idle => panic!("PostComponent is Idle when accepted() called!"),
+            RunMode::Idle => panic!("MultiInComponent is Idle when accepted() called!"),
         }
     }
     
     pub fn add_target(&mut self, target: Weak<Mutex<C>>) {
         match &mut self.mode {
-            RunMode::Idle => self.target_sets.push(InSet::new(target)), 
+            RunMode::Idle => self.in_sets.push(InSet::new(target)), 
             _ => panic!("can only add_conntion when DeviceMode::Idle!"),
         }
     }
@@ -54,13 +55,13 @@ where C: 'static + Generator<S> + Send + ?Sized,
 
     fn config_mode_to(&mut self, mode: RunMode) {
         self.mode = mode;
-        for set in &mut self.target_sets {
+        for set in &mut self.in_sets {
             set.config_mode(mode);
         }
     }
 
     pub fn config_channels(&mut self) {
-        for set in &mut self.target_sets {
+        for set in &mut self.in_sets {
             set.config_channels();
         }
     }
