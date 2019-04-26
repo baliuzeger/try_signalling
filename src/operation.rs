@@ -21,7 +21,7 @@ pub enum Broadcast {
     Exit,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum RunMode {
     Idle,
     Feedforward,
@@ -77,7 +77,7 @@ pub struct RunningSet<C: Send, R: Send> {
 }
 
 impl<C: Send, R: Send> RunningSet<C, R> {
-    pub fn new_firing_device<T>(device: Arc<Mutex<T>>) -> RunningSet<C, R>
+    pub fn new_firing_device<T>(device: Arc<Mutex<T>>) -> RunningSet<Broadcast, Fired>
     where T: 'static + FiringDevice + Send + ?Sized
     {
         // for strict ordering of agent-connection_prop, bounded(1) is chosen.
@@ -90,7 +90,7 @@ impl<C: Send, R: Send> RunningSet<C, R> {
         }
     }
 
-    pub fn new_passive_device<T>(device: Arc<Mutex<T>>) -> RunningSet<C, R>
+    pub fn new_passive_device<T>(device: Arc<Mutex<T>>) -> RunningSet<Broadcast, ()>
     where T: 'static + PassiveDevice + Send + ?Sized
     {
         // for strict ordering of agent-connection_prop, bounded(1) is chosen.
@@ -103,7 +103,7 @@ impl<C: Send, R: Send> RunningSet<C, R> {
         }
     }
 
-    pub fn new_firing_population<T>(device: Arc<Mutex<T>>) -> RunningSet<C, R>
+    pub fn new_firing_population<T>(device: Arc<Mutex<T>>) -> RunningSet<Broadcast, Fired>
     where T: 'static + FiringPopulation + Send + ?Sized
     {
         // for strict ordering of agent-connection_prop, bounded(1) is chosen.
@@ -116,14 +116,14 @@ impl<C: Send, R: Send> RunningSet<C, R> {
         }
     }
 
-    pub fn new(f: Box<dyn FnMut(CCReceiver<C>, CCSender<R>)>) -> RunningSet<C, R> {
-        // for strict ordering of agent-connection_prop, bounded(1) is chosen.
-        let (tx_confirm, rx_confirm) = crossbeam_channel::bounded(1);
-        let (tx_report, rx_report) = crossbeam_channel::bounded(1);
-        RunningSet {
-            instance: thread::spawn(move || {*f(rx_confirm, tx_report)}),
-            confirm: tx_confirm,
-            report: rx_report,
-        }
-    }
+    // pub fn new(f: Box<dyn FnMut(CCReceiver<C>, CCSender<R>) + Send>) -> RunningSet<C, R> {
+    //     // for strict ordering of agent-connection_prop, bounded(1) is chosen.
+    //     let (tx_confirm, rx_confirm) = crossbeam_channel::bounded(1);
+    //     let (tx_report, rx_report) = crossbeam_channel::bounded(1);
+    //     RunningSet {
+    //         instance: thread::spawn(move || {(*f)(rx_confirm, tx_report)}),
+    //         confirm: tx_confirm,
+    //         report: rx_report,
+    //     }
+    // }
 }

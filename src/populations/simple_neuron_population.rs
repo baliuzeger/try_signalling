@@ -28,7 +28,7 @@ impl<T: 'static + FiringDevice + Send> FiringPopulation for SimplePopulation<T> 
     }
 
     fn running_devices(&self) -> Vec<RunningSet<Broadcast, Fired>> {
-        self.neurons.iter().map(|neuron| RunningSet::new(neuron.run_f())).collect()
+        self.neurons.iter().map(|neuron| RunningSet::<Broadcast, Fired>::new_firing_device(Arc::clone(&neuron))).collect()
     }
 }
 

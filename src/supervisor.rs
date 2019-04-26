@@ -90,7 +90,7 @@ impl Supervisor {
     fn running_firing_populations(&self) -> Vec<RunningSet<Broadcast, Fired>> {
         self.firing_populations.iter()
             .map(|(_, pp)| {
-                RunningSet::new(pp.lock().unwrap().run_f())
+                RunningSet::<Broadcast, Fired>::new_firing_population(Arc::clone(&pp))
             }).collect()
     }
     

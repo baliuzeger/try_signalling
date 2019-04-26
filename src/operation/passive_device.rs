@@ -12,7 +12,7 @@ pub trait PassiveDevice {
     fn mode(&self) -> RunMode;
     fn respond(&self);
 
-    // fn run_f(&mut self) -> Box<dyn FnMut(CCReceiver<Broadcast>, CCSender<()>)> {
+    // fn run_f(&mut self) -> Box<dyn FnMut(CCReceiver<Broadcast>, CCSender<()>) + Send> {
     //     Box::new(|rx_confirm, tx_report| self.run(rx_confirm, tx_report))
     // }
 

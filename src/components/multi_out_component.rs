@@ -16,7 +16,7 @@ where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
 
 impl<C, S> MultiOutComponent<C, S>
 where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
-      S: Send,
+      S: Send + Copy,
 {
     pub fn new() -> MultiOutComponent<C, S> {
         MultiOutComponent {
@@ -31,10 +31,7 @@ where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
     
     pub fn add_passive_target(&mut self, target: Weak<Mutex<C>>) {
         match &mut self.mode {
-            RunMode::Idle => self.passive_targets.push(OutSet {
-                target,
-                config: DeviceMode::Idle,
-            }), 
+            RunMode::Idle => self.passive_targets.push(OutSet::new(target)), 
             _ => panic!("can only add_conntion when DeviceMode::Idle!"),
         }
     }
@@ -49,19 +46,20 @@ where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
     
     pub fn config_channels(&mut self) {
         for set in &mut self.passive_targets {
-            set.config_channels(self.mode());
+            set.config_channels();
         }
     }
 
     pub fn running_passive_targets(&self) -> Vec<RunningSet<Broadcast, ()>> {
         match &self.mode {
             RunMode::Idle => panic!("call running_passive_targets when agent Idle!"),
-            RunMode::Feedforward => self.passive_targets.iter().filter_map(|set| {
-                match &set.config {
-                    DeviceMode::Idle => None,
-                    DeviceMode::Feedforward(chs) => Some(RunningSet::new(set.target.upgrade().unwrap())),
-                }
-            }).collect()
+            RunMode::Feedforward => {
+                self.passive_targets.iter()
+                    .filter_map(|set| match set.channels {
+                        DeviceMode::Idle => None,
+                        DeviceMode::Feedforward(_) => Some(RunningSet::<Broadcast, ()>::new_passive_device(set.target.upgrade().unwrap()))
+                    }).collect()                
+            }
         }
     }
     
@@ -80,7 +78,7 @@ where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
     pub fn feedforward(&self, s: S) {
         match &self.mode {
             RunMode::Feedforward => for set in &self.passive_targets {
-                match &set.config {
+                match &set.channels {
                     DeviceMode::Idle => (),
                     DeviceMode::Feedforward(chs) => chs.ch_ffw.send(s).unwrap(),
                 }

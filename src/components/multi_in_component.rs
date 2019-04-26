@@ -31,9 +31,9 @@ where C: 'static + Generator<S> + Send + ?Sized,
             RunMode::Feedforward => {
                 self.targets.iter()
                     .filter_map(|set| {
-                        match &set.config {
+                        match &set.channels {
                             DeviceMode::Idle => None,
-                            DeviceMode::Feedforward(chs_in_ffw) => chs_in_ffw.ch_ffw.try_iter()
+                            DeviceMode::Feedforward(chs_in_ffw) => Some(chs_in_ffw.ch_ffw.try_iter()),
                         }
                     }).flatten().collect()
             },
@@ -43,10 +43,7 @@ where C: 'static + Generator<S> + Send + ?Sized,
     
     pub fn add_target(&mut self, target: Weak<Mutex<C>>) {
         match &mut self.mode {
-            RunMode::Idle => self.targets.push(InSet {
-                target,
-                config: DeviceMode::Idle,
-            }), 
+            RunMode::Idle => self.targets.push(InSet::new(target)), 
             _ => panic!("can only add_conntion when DeviceMode::Idle!"),
         }
     }
@@ -61,7 +58,7 @@ where C: 'static + Generator<S> + Send + ?Sized,
 
     pub fn config_channels(&mut self) {
         for set in &mut self.targets {
-            set.config_channels(self.mode());
+            set.config_channels();
         }
     }
 

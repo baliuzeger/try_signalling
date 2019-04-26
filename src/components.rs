@@ -1,4 +1,3 @@
-
 use std::sync::{Arc, Mutex, Weak};
 extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
@@ -24,17 +23,25 @@ impl<C, S> OutSet<C, S>
 where C: Acceptor<S> + Send + ?Sized,
       S: Send,
 {
+    pub fn new(target: Weak<Mutex<C>>) -> OutSet<C, S> {
+        OutSet {
+            target,
+            channels: DeviceMode::Idle,
+            linker: Arc::new(Mutex::new(Linker::new())),
+        }
+    }
+
     pub fn config_run(&mut self, mode: RunMode) {
         self.linker.lock().unwrap().pre_mode = mode;
     }
 
     pub fn config_channels(&mut self) {
         let mut lnkr = self.linker.lock().unwrap();
-        self.channels = link.make_pre();
+        self.channels = lnkr.make_pre();
     }
 
     pub fn config_idle(&mut self) {
-        self.config = DeviceMode::Idle;
+        self.channels = DeviceMode::Idle;
         self.linker.lock().unwrap().config_idle();
     }
 }
@@ -44,7 +51,7 @@ where C: Generator<S> + Send + ?Sized,
       S: Send,
 {
     pub target: Weak<Mutex<C>>,
-    pub config: DeviceMode<ChannelsInFFW<S>>,
+    pub channels: DeviceMode<ChannelsInFFW<S>>,
     pub linker: Arc<Mutex<Linker<S>>>,
 }
 
@@ -52,130 +59,124 @@ impl<C, S> InSet<C, S>
 where C: Generator<S> + Send + ?Sized,
       S: Send,
 {
-    pub fn config_channels(&mut self, mode: RunMode) {
-        self.config = match self.target.upgrade().unwrap().mode() {
-            RunMode::Idle => DeviceMode::Idle,
-            RunMode::Feedforward => {
-                let mut lnkr = self.linker.lock().unwrap();
-                DeviceMode::Feedforward(
-                    ChannelsOutFFW {
-                        ch_ffw: match lnkr.mode() {
-                            RunMode::Idle => lnkr.gen_post(),
-                            RunMode::Feedforward => lnkr.take_post(),
-                        }
-                    }
-                )
-            },
+    pub fn new(target: Weak<Mutex<C>>) -> InSet<C, S> {
+        InSet {
+            target,
+            channels: DeviceMode::Idle,
+            linker: Arc::new(Mutex::new(Linker::new())),
         }
     }
 
+    pub fn config_run(&mut self, mode: RunMode) {
+        self.linker.lock().unwrap().post_mode = mode;
+    }
+
+    pub fn config_channels(&mut self) {
+        let mut lnkr = self.linker.lock().unwrap();
+        self.channels = lnkr.make_post();
+    }
+
     pub fn config_idle(&mut self) {
-        self.config = DeviceMode::Idle;
+        self.channels = DeviceMode::Idle;
         self.linker.lock().unwrap().config_idle();
     }
 }
 
-struct Linker<S: Send> {
+pub struct Linker<S: Send> {
     pub pre_mode: RunMode,
     pub post_mode: RunMode,
-    channels: DeviceMode<TmpFFW<S>>,
+    pub tmp: DeviceMode<TmpFFW<S>>,
 }
 
 impl<S: Send> Linker<S> {
-    fn channels_mode(&self) -> RunMode {
-        RunMode::mode_from_device(self.channels)
-    }
-
-    fn make_pre(&mut self) -> DeviceMode<ChannelsOutFFW<S>> {
-        match self.pre_mode() {
-            RunMode::Idle => {
-                self.config_idle();
-                DeviceMode::Idle
-            },
-            pre_m => match self.post_mode {
-                RunMode::Idle => {
-                    self.config_idle();
-                    DeviceMode::Idle
-                },
-
-                pre_m => match self.channels_mode() {
-                    RunMode::Idle => match pre_m {
-                        RunMode::Idle => panic!("pre_m can't be Idle."),
-                        RunMode::Feedforward => {
-                            let (tx, rx) = crossbeam_channel::unbounded();
-                            self.channels = DeviceMode::Feedforward(TmpFFW {
-                                pre: None,
-                                post: Some(rx),
-                            });
-                            DeviceMode::Feedforward(
-                                ChannelsOutFFW {
-                                    ch_ffw: tx
-                                }
-                            )                            
-                        }
-                    },
-
-                    pre_m => DeviceMode::Feedforward(
-                        ChannelsOutFFW {
-                            ch_ffw: match &mut self.config {
-                                DeviceMode::Idle => panic!("Linker is idle when take_pre!"),
-                                DeviceMode::Feedforward(lnks) => lnks.pre.take(),
-                            }    
-                        }
-                    ),
-                    _ => panic!("lnker's channels configed into different mode from pre/post!"),
-                },
-                _ => panic!("pre/post of linker configed into different modes!"),
-            },
+    pub fn new() -> Linker<S> {
+        Linker {
+            pre_mode: RunMode::Idle,
+            post_mode: RunMode::Idle,
+            tmp: DeviceMode::Idle,
         }
     }
 
-    fn make_post(&mut self) -> DeviceMode<ChannelsInFFW<S>> {
-        match self.post_mode() {
-            RunMode::Idle => {
+    // pub fn channels_mode(&self) -> RunMode {
+    //     RunMode::mode_from_device(&self.tmp)
+    // }
+
+    pub fn make_pre(&mut self) -> DeviceMode<ChannelsOutFFW<S>> {
+        match (self.pre_mode, self.post_mode, self.tmp) {
+            (RunMode::Idle, _, DeviceMode::Idle) | (_, RunMode::Idle, DeviceMode::Idle) => {
                 self.config_idle();
                 DeviceMode::Idle
             },
-            post_m => match self.pre_mode {
-                RunMode::Idle => {
-                    self.config_idle();
-                    DeviceMode::Idle
-                },
+            (RunMode::Idle, _, ch_m) | (_, RunMode::Idle, ch_m) => panic!(
+                "pre or post of Linker is Idle, but Channels is {:?}!", RunMode::mode_from_device(ch_m)
+            ),
 
-                post_m => match self.channels_mode() {
-                    RunMode::Idle => match post_m {
-                        RunMode::Idle => panic!("post_m can't be Idle."),
-                        RunMode::Feedforward => {
-                            let (tx, rx) = crossbeam_channel::unbounded();
-                            self.channels = DeviceMode::Feedforward(TmpFFW {
-                                pre: Some(tx),
-                                post: None,
-                            });
-                            DeviceMode::Feedforward(
-                                ChannelsInFFW {
-                                    ch_ffw: rx
-                                }
-                            )                            
-                        }
-                    },
+            (pre_m, post_m, ch_m) if pre_m != post_m => panic!(
+                "pre & post of Linker configed into different modes! pre: {:?}, post: {:?}, ch: {:?}.",
+                pre_m, post_m, RunMode::mode_from_device(ch_m)
+            ),
 
-                    pre_m => DeviceMode::Feedforward(
-                        ChannelsInFFW {
-                            ch_ffw: match &mut self.config {
-                                DeviceMode::Idle => panic!("Linker is idle when take_pre!"),
-                                DeviceMode::Feedforward(lnks) => lnks.post.take(),
-                            }    
-                        }
-                    ),
-                    _ => panic!("lnker's channels configed into different mode from pre/post!"),
-                },
-                _ => panic!("pre/post of linker configed into different modes!"),
+            (RunMode::Feedforward, RunMode::Feedforward, DeviceMode::Idle) => {
+                let (tx, rx) = crossbeam_channel::unbounded();
+                self.tmp = DeviceMode::Feedforward(TmpFFW {
+                    pre: None,
+                    post: Some(rx),
+                });
+                DeviceMode::Feedforward(
+                    ChannelsOutFFW {
+                        ch_ffw: tx
+                    }
+                )                            
             },
+
+            (RunMode::Feedforward, RunMode::Feedforward, DeviceMode::Feedforward(chs)) => DeviceMode::Feedforward(
+                ChannelsOutFFW {
+                    ch_ffw: DeviceMode::Feedforward(chs) => chs.pre.take().expect("None Out Channels in Linker!"),
+                }
+            ),
+            (pre_m, post_m, ch_m) => panic!("Channels of Linker != pre/post or idle. pre: {:?}, post: {:?}, ch: {:?}", pre_m, post_m, RunMode::mode_from_device(ch_m)),
         }
     }
 
-    fn config_idle(&mut self) {
-        self.config = DeviceMode::Idle;
+    pub fn make_post(&mut self) -> DeviceMode<ChannelsInFFW<S>> {
+        match (self.pre_mode, self.post_mode, self.tmp) {
+            (RunMode::Idle, _, DeviceMode::Idle) | (_, RunMode::Idle, DeviceMode::Idle) => {
+                self.config_idle();
+                DeviceMode::Idle
+            },
+            (RunMode::Idle, _, ch_m) | (_, RunMode::Idle, ch_m) => panic!(
+                "pre or post of Linker is Idle, but Channels is {:?}!", RunMode::mode_from_device(ch_m)
+            ),
+
+            (pre_m, post_m, ch_m) if pre_m != post_m => panic!(
+                "pre & post of Linker configed into different modes! pre: {:?}, post: {:?}, ch: {:?}.",
+                pre_m, post_m, RunMode::mode_from_device(ch_m)
+            ),
+
+            (RunMode::Feedforward, RunMode::Feedforward, DeviceMode::Idle) => {
+                let (tx, rx) = crossbeam_channel::unbounded();
+                self.tmp = DeviceMode::Feedforward(TmpFFW {
+                    pre: Some(tx),
+                    post: None,
+                });
+                DeviceMode::Feedforward(
+                    ChannelsInFFW {
+                        ch_ffw: tx
+                    }
+                )                            
+            },
+
+            (RunMode::Feedforward, RunMode::Feedforward, DeviceMode::Feedforward(chs)) => DeviceMode::Feedforward(
+                ChannelsInFFW {
+                    ch_ffw: DeviceMode::Feedforward(chs) => chs.post.take().expect("None Out Channels in Linker!"),
+                }
+            ),
+            (pre_m, post_m, ch_m) => panic!("Channels of Linker != pre/post or idle. pre: {:?}, post: {:?}, ch: {:?}", pre_m, post_m, RunMode::mode_from_device(ch_m)),
+        }
+    }
+
+    pub fn config_idle(&mut self) {
+        self.tmp = DeviceMode::Idle;
     }
 }
 
@@ -184,10 +185,10 @@ struct TmpFFW<S: Send> {
     pub post: Option<CCReceiver<S>>,
 }
 
-struct ChannelsOutFFW<S: Send> {
+pub struct ChannelsOutFFW<S: Send> {
     pub ch_ffw: CCSender<S>,
 }
 
-struct ChannelsInFFW<S: Send> {
+pub struct ChannelsInFFW<S: Send> {
     pub ch_ffw: CCReceiver<S>,
 }

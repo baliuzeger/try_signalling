@@ -10,11 +10,11 @@ pub trait FiringDevice {
     fn config_run(&mut self, mode: RunMode);
     fn config_channels(&mut self);
     fn config_idle(&mut self);
-    fn running_passive_devices(&self) -> Vec<RunningSet<(), Broadcast>>;
+    fn running_passive_devices(&self) -> Vec<RunningSet<Broadcast, ()>>;
     fn end(&mut self);
     fn evolve(&mut self) -> Fired;
 
-    // fn run_f(&mut self) -> Box<dyn FnMut(CCReceiver<Broadcast>, CCSender<Fired>)> {
+    // fn run_f(&mut self) -> Box<dyn FnMut(CCReceiver<Broadcast>, CCSender<Fired>) + Send> {
     //     Box::new(|rx_confirm, tx_report| self.run(rx_confirm, tx_report))
     // }
     
