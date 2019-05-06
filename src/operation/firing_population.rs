@@ -64,7 +64,7 @@ pub trait FiringPopulation {
                                     }
                                     // println!("pp get report from neuron of FinishCycle.")
                                 },
-                                _ => panic!("sp not confirm by FinishCycle before finish cycle!"),
+                                _ => panic!("supervisor not confirm by FinishCycle before finish cycle!"),
                             }
                             tx_report.send(Fired::N).unwrap();
                         }
