@@ -5,9 +5,8 @@ use crossbeam_channel::Sender as CCSender;
 use crate::operation::{RunningSet, Broadcast, RunMode};
 
 pub trait ConsecutivePopulation {
-    fn config_run(&mut self, mode: RunMode);
+    fn config_mode(&mut self, mode: RunMode);
     fn config_channels(&mut self);
-    fn config_idle(&mut self);
     fn running_devices(&self) -> Vec<RunningSet<Broadcast, ()>>;
 
     // fn run_f(&mut self) -> fn(CCReceiver<Broadcast>, CCSender<Fired>) {}

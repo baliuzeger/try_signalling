@@ -9,7 +9,6 @@ use crate::random_sleep;
 pub trait FiringDevice: ActiveDevice {
     fn config_run(&mut self, mode: RunMode);
     fn config_channels(&mut self);
-    fn config_idle(&mut self);
     fn running_passive_devices(&self) -> Vec<RunningSet<Broadcast, ()>>;
     fn end(&mut self);
     fn evolve(&mut self) -> Fired;

@@ -32,13 +32,13 @@ impl Supervisor {
     pub fn run(&self, mode: RunMode, total_steps: u32) {
         // this version make all connections (only passive supported) into threads controlled by pre-agents.
         for (_, pp) in &self.firing_populations {
-            pp.upgrade().unwrap().lock().unwrap().config_run(mode);
+            pp.upgrade().unwrap().lock().unwrap().config_mode(mode);
         }
         for (_, pp) in &self.consecutive_populations {
-            pp.upgrade().unwrap().lock().unwrap().config_run(mode);
+            pp.upgrade().unwrap().lock().unwrap().config_mode(mode);
         }
         for (_, pp) in &self.passive_populations {
-            pp.upgrade().unwrap().lock().unwrap().config_run(mode);
+            pp.upgrade().unwrap().lock().unwrap().config_mode(mode);
         }
 
         for (_, pp) in &self.firing_populations {
@@ -115,13 +115,13 @@ impl Supervisor {
         }
         
         for (_, pp) in &self.firing_populations {
-            pp.upgrade().unwrap().lock().unwrap().config_idle();
+            pp.upgrade().unwrap().lock().unwrap().config_mode(RunMode::Idle);
         }
         for (_, pp) in &self.consecutive_populations {
-            pp.upgrade().unwrap().lock().unwrap().config_idle();
+            pp.upgrade().unwrap().lock().unwrap().config_mode(RunMode::Idle);
         }
         for (_, pp) in &self.passive_populations {
-            pp.upgrade().unwrap().lock().unwrap().config_idle();
+            pp.upgrade().unwrap().lock().unwrap().config_mode(RunMode::Idle);
         }
 
     }

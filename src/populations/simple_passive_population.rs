@@ -13,22 +13,16 @@ where T: PassiveDevice,
 impl<T> PassivePopulation for SimplePassivePopulation<T>
 where T: PassiveDevice,
 {
-    fn config_run(&mut self, mode: RunMode) {
+    fn config_mode(&mut self, mode: RunMode) {
         // println!("SimplePassiveconnectionpopulation config_run.");
         for device in &self.devices {
-            device.lock().unwrap().config_run(mode);
+            device.lock().unwrap().config_mode(mode);
         }
     }
 
     fn config_channels(&mut self) {
         for device in &self.devices {
             device.lock().unwrap().config_channels();
-        }
-    }
-    
-    fn config_idle(&mut self) {
-        for device in &self.devices {
-            device.lock().unwrap().config_idle();
         }
     }
 }

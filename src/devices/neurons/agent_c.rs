@@ -1,13 +1,11 @@
 use std::sync::{Mutex, Arc, Weak};
-use crate::connections::{RunningPassiveConnection, PassiveConnection};
-use crate::connections::signal_1::{FwdPreS1, FwdPostS1};
-use crate::connections::signal_1::{PreAgentComponentS1, PostAgentComponentS1};
-use crate::agents::{Agent, AgentEvent, Generator, Acceptor};
-use crate::supervisor::{RunMode};
+use crate::connectivity::s1_pre::{MultiOutComponentS1Pre, MultiInComponentS1Pre, FwdPreS1};
+use crate::connectivity::s1_post::{MultiOutComponentS1Post, MultiInComponentS1Post, FwdPostS1};
+use crate::connectivity::{Generator, Acceptor};
 
 pub struct Model {
-    pre_module_s1: PreAgentComponentS1,
-    post_module_s1: PostAgentComponentS1,
+    pre_module_s1: MultiInComponentS1Pre,
+    post_module_s1: MultiOutComponentS1Post,
     gen_value: i32,
     proc_value: i32,
     event_cond: Option<i32>,
@@ -18,6 +16,10 @@ struct FwdEndProduct {
     pub msg_gen: i32,
     pub msg_prop: i32,
     pub msg_proc: i32,
+}
+
+impl Generator<FwdPreS1> for Model {
+    
 }
 
 impl Generator<FwdPreS1, FwdPostS1> for Model {

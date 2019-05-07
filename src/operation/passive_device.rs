@@ -7,9 +7,8 @@ use crate::random_sleep;
 
 /// used by Components.runningdevices()
 pub trait PassiveDevice {
-    fn config_run(&mut self, mode: RunMode);
+    fn config_mode(&mut self, mode: RunMode);
     fn config_channels(&mut self);
-    fn config_idle(&mut self);
     fn mode(&self) -> RunMode;
     fn respond(&self);
 
