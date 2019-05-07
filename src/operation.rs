@@ -4,16 +4,19 @@ use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use std::thread;
 use std::thread::JoinHandle;
-pub use crate::operation::firing_device::FiringDevice;
-pub use crate::operation::passive_device::PassiveDevice;
-pub use crate::operation::firing_population::FiringPopulation;
-pub use crate::operation::passive_population::PassivePopulation;
+
+pub use self::firing_population::FiringPopulation;
+pub use self::consecutive_population::ConsecutivePopulation;
+pub use self::passive_population::PassivePopulation;
+pub use self::firing_device::FiringDevice;
+pub use self::consecutive_device::ConsecutiveDevice;
+pub use self::passive_device::PassiveDevice;
 
 pub mod firing_population;
-// pub mod active_population;
+pub mod consecutive_population;
 pub mod passive_population;
 pub mod firing_device;
-// pub mod active_device;
+pub mod consecutive_device;
 pub mod passive_device;
 
 pub enum Broadcast {
@@ -65,11 +68,13 @@ pub enum Fired {
     N,
 }
 
-pub trait Runnable {
-    fn config_run(&mut self, mode: RunMode);
-    fn config_channels(&mut self);
-    fn config_idle(&mut self);
-}
+// pub trait Runnable {
+//     fn config_run(&mut self, mode: RunMode);
+//     fn config_channels(&mut self);
+//     fn config_idle(&mut self);
+// }
+
+pub trait ActiveDevice {}
 
 pub struct RunningSet<C: Send, R: Send> {
     pub instance: JoinHandle<()>,
@@ -106,6 +111,19 @@ impl<C: Send, R: Send> RunningSet<C, R> {
 
     pub fn new_firing_population<T>(device: Arc<Mutex<T>>) -> RunningSet<Broadcast, Fired>
     where T: 'static + FiringPopulation + Send + ?Sized
+    {
+        // for strict ordering of agent-connection_prop, bounded(1) is chosen.
+        let (tx_confirm, rx_confirm) = crossbeam_channel::bounded(1);
+        let (tx_report, rx_report) = crossbeam_channel::bounded(1);
+        RunningSet {
+            instance: thread::spawn(move || {device.lock().unwrap().run(rx_confirm, tx_report)}),
+            confirm: tx_confirm,
+            report: rx_report,
+        }
+    }
+
+    pub fn new_consecutive_population<T>(device: Arc<Mutex<T>>) -> RunningSet<Broadcast, ()>
+    where T: 'static + ConsecutivePopulation + Send + ?Sized
     {
         // for strict ordering of agent-connection_prop, bounded(1) is chosen.
         let (tx_confirm, rx_confirm) = crossbeam_channel::bounded(1);

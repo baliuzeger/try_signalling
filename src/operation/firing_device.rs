@@ -3,20 +3,16 @@
 extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
-use crate::operation::{RunningSet, Broadcast, Fired, RunMode};
+use crate::operation::{RunningSet, Broadcast, Fired, RunMode, ActiveDevice};
 use crate::random_sleep;
 
-pub trait FiringDevice {
+pub trait FiringDevice: ActiveDevice {
     fn config_run(&mut self, mode: RunMode);
     fn config_channels(&mut self);
     fn config_idle(&mut self);
     fn running_passive_devices(&self) -> Vec<RunningSet<Broadcast, ()>>;
     fn end(&mut self);
     fn evolve(&mut self) -> Fired;
-
-    // fn run_f(&mut self) -> Box<dyn FnMut(CCReceiver<Broadcast>, CCSender<Fired>) + Send> {
-    //     Box::new(|rx_confirm, tx_report| self.run(rx_confirm, tx_report))
-    // }
     
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<Fired>) {
         let running_devices = self.running_passive_devices();
@@ -37,9 +33,6 @@ pub trait FiringDevice {
                 },
 
                 Broadcast::NewCycle => {
-                    // for r_cn in &running_active_connections {
-                    //     r_cn.confirm.send(Broadcast::NewCycle).unwrap();
-                    // }
                     match self.evolve() {
                         Fired::N => tx_report.send(Fired::N).unwrap(),
                         Fired::Y => {

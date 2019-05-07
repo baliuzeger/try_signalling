@@ -72,7 +72,7 @@ impl<C, S> InSet<C, S>
 where C: Generator<S> + Send + ?Sized,
       S: Send,
 {
-    pub fn new(target: Weak<Mutex<C>>, Arc<Mutex<Linker<S>>>) -> InSet<C, S> {
+    pub fn new(target: Weak<Mutex<C>>, linker: Arc<Mutex<Linker<S>>>) -> InSet<C, S> {
         InSet {
             target,
             channels: DeviceMode::Idle,

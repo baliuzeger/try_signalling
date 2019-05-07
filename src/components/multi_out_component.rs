@@ -1,15 +1,15 @@
-use std::sync::{Mutex, Weak};
+use std::sync::{Mutex, Weak, Arc};
 use crate::operation::{RunningSet, RunMode, DeviceMode, Broadcast};
 use crate::connectivity::{PassiveAcceptor};
-use crate::components::OutSet;
+use crate::components::{OutSet, Linker};
 
-pub struct MultiOutComponent<C, S>
-where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
+pub struct MultiOutComponent<CP, S>
+where CP: 'static + PassiveAcceptor<S> + Send + ?Sized,
       S: Send
-      //CA: 'static + ActiveAcceptor<S> + Send + ?Sized,
+      // CA: 'static + ActiveAcceptor<S> + Send + ?Sized,
 {
     mode: RunMode,
-    passive_out_sets: Vec<OutSet<C, S>>,
+    passive_out_sets: Vec<OutSet<CP, S>>,
     // active_taegets: Vec<OutSet<CA, S>>
 }
 
@@ -28,9 +28,9 @@ where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
         self.mode
     }
     
-    pub fn add_passive_target(&mut self, target: Weak<Mutex<C>>) {
+    pub fn add_passive_target(&mut self, target: Weak<Mutex<C>>, linker: Arc<Mutex<Linker<S>>>) {
         match &mut self.mode {
-            RunMode::Idle => self.passive_out_sets.push(OutSet::new(target)), 
+            RunMode::Idle => self.passive_out_sets.push(OutSet::new(target, linker)), 
             _ => panic!("can only add_conntion when DeviceMode::Idle!"),
         }
     }
