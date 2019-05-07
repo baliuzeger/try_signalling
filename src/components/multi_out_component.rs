@@ -69,18 +69,6 @@ where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
             }
         }
     }
-    
-    pub fn config_idle(&mut self) {
-        match &self.mode {
-            RunMode::Feedforward => {
-                self.mode = RunMode::Idle;
-                for set in &mut self.passive_out_sets {
-                    set.config_idle();
-                }
-            }
-            RunMode::Idle => println!("call fn config_idle when Idle, no effect."),
-        }
-    }
 
     pub fn feedforward(&self, s: S) {
         match &self.mode {

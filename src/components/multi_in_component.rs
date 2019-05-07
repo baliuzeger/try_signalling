@@ -46,10 +46,10 @@ where C: 'static + Generator<S> + Send + ?Sized,
 
     pub fn config_mode(&mut self, mode: RunMode) {
         match (mode, &self.mode) {
-            (RunMode::Idle, RunMode::Idle) => println!("config_mode from Idle to Idle, no effect."),
+            (RunMode::Idle, RunMode::Idle) => println!("MultiInComponent config_mode from Idle to Idle, no effect."),
             (RunMode::Idle, _) => self.config_mode_to(mode),
             (_, RunMode::Idle) => self.config_mode_to(mode),
-            (_, _) => panic!("unhandled config_mode: from {:?} to {:?}.", self.mode(), mode),
+            (_, _) => panic!("MultiInComponent config_mode: from {:?} to {:?}.", self.mode(), mode),
         }
     }
 

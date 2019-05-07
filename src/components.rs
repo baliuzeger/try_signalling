@@ -38,17 +38,18 @@ where C: Acceptor<S> + Send + ?Sized,
     }
 
     pub fn config_mode(&mut self, mode: RunMode) {
-        self.linker.lock().unwrap().pre_mode = mode;
+        match mode {
+            RunMode::Idle => {
+                self.channels = DeviceMode::Idle;
+                self.linker.lock().unwrap().config_idle();
+            },
+            _  => self.linker.lock().unwrap().config_pre(mode),
+        }
     }
 
     pub fn config_channels(&mut self) {
         let mut lnkr = self.linker.lock().unwrap();
         self.channels = lnkr.make_pre();
-    }
-
-    pub fn config_idle(&mut self) {
-        self.channels = DeviceMode::Idle;
-        self.linker.lock().unwrap().config_idle();
     }
 
     pub fn feedforward(&self, s: S) {
@@ -81,17 +82,18 @@ where C: Generator<S> + Send + ?Sized,
     }
 
     pub fn config_mode(&mut self, mode: RunMode) {
-        self.linker.lock().unwrap().post_mode = mode;
+        match mode {
+            RunMode::Idle => {
+                self.channels = DeviceMode::Idle;
+                self.linker.lock().unwrap().config_idle();
+            },
+            _  => self.linker.lock().unwrap().config_post(mode),
+        }
     }
 
     pub fn config_channels(&mut self) {
         let mut lnkr = self.linker.lock().unwrap();
         self.channels = lnkr.make_post();
-    }
-
-    pub fn config_idle(&mut self) {
-        self.channels = DeviceMode::Idle;
-        self.linker.lock().unwrap().config_idle();
     }
 
     pub fn ffw_accepted_iter(&self) -> Option<CCTryIter<S>> {
@@ -103,9 +105,9 @@ where C: Generator<S> + Send + ?Sized,
 }
 
 pub struct Linker<S: Send> {
-    pub pre_mode: RunMode,
-    pub post_mode: RunMode,
-    pub tmp: DeviceMode<TmpFFW<S>>,
+    pre_mode: RunMode,
+    post_mode: RunMode,
+    tmp: DeviceMode<TmpFFW<S>>,
 }
 
 impl<S: Send> Linker<S> {
@@ -117,6 +119,22 @@ impl<S: Send> Linker<S> {
         }))
     }
 
+    pub fn config_post(&mut self, mode: RunMode) {
+        match (mode, &mut self.post_mode) {
+            (RunMode::Idle, _) => self.config_idle(),
+            (_, RunMode::Idle) => self.post_mode = mode,
+            (_, _) => panic!("config_post on Linker: from {:?} to {:?}.", self.post_mode, mode),
+        }
+    }
+
+    pub fn config_pre(&mut self, mode: RunMode) {
+        match (mode, &mut self.pre_mode) {
+            (RunMode::Idle, _) => self.config_idle(),
+            (_, RunMode::Idle) => self.pre_mode = mode,
+            (_, _) => panic!("config_pre on Linker: from {:?} to {:?}.", self.pre_mode, mode),
+        }
+    }
+    
     pub fn make_pre(&mut self) -> DeviceMode<ChannelsOutFFW<S>> {
         match (self.pre_mode, self.post_mode, &mut self.tmp) {
             (RunMode::Idle, _, DeviceMode::Idle) | (_, RunMode::Idle, DeviceMode::Idle) => {

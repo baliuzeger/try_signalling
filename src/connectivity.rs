@@ -38,6 +38,6 @@ where G: Generator<S>,
       S: Send,
 {
     let linker = Linker::new();
-    pre.lock().unwrap().add_active(Arc::downgrade(&post), Arc::clone(linker));
+    pre.lock().unwrap().add_active(Arc::downgrade(&post), Arc::clone(&linker));
     post.lock().unwrap().add(Arc::downgrade(&pre), linker);
 }
