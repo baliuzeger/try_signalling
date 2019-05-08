@@ -1,3 +1,3 @@
-// pub mod agent_a;
-// pub mod agent_b;
-// pub mod agent_c;
+// pub mod neuron_a;
+// pub mod neuron_b;
+// pub mod neuron_c;

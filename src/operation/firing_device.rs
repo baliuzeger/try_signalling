@@ -7,7 +7,7 @@ use crate::operation::{RunningSet, Broadcast, Fired, RunMode, ActiveDevice};
 use crate::random_sleep;
 
 pub trait FiringDevice: ActiveDevice {
-    fn config_run(&mut self, mode: RunMode);
+    fn config_mode(&mut self, mode: RunMode);
     fn config_channels(&mut self);
     fn running_passive_devices(&self) -> Vec<RunningSet<Broadcast, ()>>;
     fn end(&mut self);
@@ -15,7 +15,8 @@ pub trait FiringDevice: ActiveDevice {
     
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<Fired>) {
         let running_devices = self.running_passive_devices();
-
+        let mut last_result = Fired::N;
+        
         loop {
             random_sleep();
             match rx_confirm.recv().unwrap() {
@@ -36,27 +37,33 @@ pub trait FiringDevice: ActiveDevice {
                         Fired::N => tx_report.send(Fired::N).unwrap(),
                         Fired::Y => {
                             random_sleep();
+                            last_result = Fired::Y;
                             tx_report.send(Fired::Y).unwrap();
-                            // println!("agnt waiting pp confirm FinishCycle.");
-                            match rx_confirm.recv().unwrap() {
-                                Broadcast::FinishCycle => {
-                                    for r_cn in &running_devices {
-                                        r_cn.confirm.send(Broadcast::FinishCycle).unwrap();
-                                    }
-                                    // println!("agnt waiting conn report finish Prop.");
-                                    for r_cn in &running_devices {
-                                        r_cn.report.recv().unwrap();
-                                    }
-                                    // println!("agnt get conn report finish Prop.");
-                                    tx_report.send(Fired::N).unwrap();
-                                },
-                                _ => panic!("sp not confirm by FinishCycle before finish cycle!"),
-                            }
+                            // println!("agnt finished NewCycle.");
                         }
                     }
                 },
 
-                _ => panic!("agent should only get Exit or NewCycle at beginning of cycle!")
+                Broadcast::FinishCycle => {
+                    random_sleep();
+                    match &mut last_result {
+                        Fired::N => (),
+                        Fired::Y => {
+                            for r_cn in &running_devices {
+                                r_cn.confirm.send(Broadcast::FinishCycle).unwrap();
+                            }
+                            // println!("agnt waiting conn report finish Prop.");
+                            for r_cn in &running_devices {
+                                r_cn.report.recv().unwrap();
+                            }
+                            // println!("agnt get conn report finish Prop.");
+                            tx_report.send(Fired::N).unwrap();
+                        }
+                    }
+                    last_result = Fired::N;
+                }
+                
+
             }
         }
     }    

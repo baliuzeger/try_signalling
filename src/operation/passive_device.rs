@@ -9,12 +9,7 @@ use crate::random_sleep;
 pub trait PassiveDevice {
     fn config_mode(&mut self, mode: RunMode);
     fn config_channels(&mut self);
-    fn mode(&self) -> RunMode;
     fn respond(&self);
-
-    // fn run_f(&mut self) -> Box<dyn FnMut(CCReceiver<Broadcast>, CCSender<()>) + Send> {
-    //     Box::new(|rx_confirm, tx_report| self.run(rx_confirm, tx_report))
-    // }
 
     fn run(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<()>){
         loop {

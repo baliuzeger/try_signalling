@@ -1,11 +1,12 @@
 use std::sync::{Mutex, Arc, Weak};
-use crate::connectivity::s1_pre::{MultiOutComponentS1Pre, MultiInComponentS1Pre, FwdPreS1};
-use crate::connectivity::s1_post::{MultiOutComponentS1Post, MultiInComponentS1Post, FwdPostS1};
+use crate::connectivity::s1_pre::{MultiOutComponentS1Pre, FwdPreS1};
+use crate::connectivity::s1_post::{MultiInComponentS1Post, FwdPostS1};
 use crate::connectivity::{Generator, Acceptor};
+use crate::operation::{ActiveDevice, FiringDevice};
 
-pub struct Model {
-    pre_module_s1: MultiInComponentS1Pre,
-    post_module_s1: MultiOutComponentS1Post,
+pub struct NeuronC {
+    out_s1_pre: MultiOutComponentS1Pre,
+    in_s1_post: MultiInComponentS1Post,
     gen_value: i32,
     proc_value: i32,
     event_cond: Option<i32>,
@@ -19,24 +20,31 @@ struct FwdEndProduct {
 }
 
 impl Generator<FwdPreS1> for Model {
-    
-}
-
-impl Generator<FwdPreS1, FwdPostS1> for Model {
-    fn add_out_passive<C> (&mut self, connection: Weak<Mutex<C>>)
-    where C: 'static + PassiveConnection<FwdPreS1, FwdPostS1> + Send
+    fn add_passive<A>(&mut self, post: Weak<Mutex<A>>, linker: Arc<Mutex<Linker<FwdPreS1>>>)
+        where A: PassiveAcceptor<FwdPreS1>,
     {
-        self.pre_module_s1.add_connection(connection);
+        self.out_s1_pre.add_passive_target(post, linker);
     }
 }
 
-impl Acceptor<FwdPreS1, FwdPostS1> for Model {
-    fn add_in<C> (&mut self, connection: Weak<Mutex<C>>)
-    where C: 'static + PassiveConnection<FwdPreS1, FwdPostS1> + Send
+impl Acceptor<FwdPostS1> {
+    fn add<G>(&mut self, pre: Weak<Mutex<G>>, linker: Arc<Mutex<Linker<FwdPostS1>>>)
+    where G: Generator<FwdPostS1>,
     {
-        self.post_module_s1.add_connection(connection);
+        self.in_s1_post.add_target(pre, linker);
     }
 }
+
+impl NeuronC ActiveDevice {}
+
+impl NeuronC FiringDevice {
+    fn config_run(&mut self, mode: RunMode);
+    fn config_channels(&mut self);
+    fn running_passive_devices(&self) -> Vec<RunningSet<Broadcast, ()>>;
+    fn end(&mut self);
+    fn evolve(&mut self) -> Fired;
+}
+
 
 impl Agent for Model {
     fn config_run(&mut self, mode: RunMode) {

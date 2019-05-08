@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 use crate::operation::{RunMode};
 use crate::operation::passive_device::PassiveDevice;
 use crate::operation::passive_population::PassivePopulation;
-
+use crate::populations::HoldDevices;
 
 pub struct SimplePassivePopulation<T>
 where T: PassiveDevice,
@@ -27,6 +27,13 @@ where T: PassiveDevice,
     }
 }
 
+impl<T: FiringDevice + Send> HoldDevices for SimplePassivePopulation<T> {
+    type Device = T;
+    fn device_by_id(&self, n: usize) -> Arc<Mutex<T>> {
+        Arc::clone(&self.devices[n])
+    }    
+}
+
 impl<T>  SimplePassivePopulation<T>
 where T: PassiveDevice,
 {
@@ -39,9 +46,4 @@ where T: PassiveDevice,
     pub fn add(&mut self, device: Arc<Mutex<T>>) {
         self.devices.push(device);
     }
-
-    
-    pub fn device_by_id(&self, n: usize) -> Arc<Mutex<T>> {
-        Arc::clone(&self.devices[n])
-    }    
 }

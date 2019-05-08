@@ -73,6 +73,7 @@ impl Supervisor {
                 }
                 break;
             } else  {
+
                 random_sleep();
                 // println!("count: {}.", counter);
                 fired_populations.clear();
