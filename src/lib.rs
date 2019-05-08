@@ -17,7 +17,7 @@ mod tests {
     }
 }
 
-// pub mod supervisor;
+pub mod supervisor;
 // pub mod populations;
 // pub mod devices;
 // pub mod components;

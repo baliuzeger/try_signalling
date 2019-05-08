@@ -5,9 +5,6 @@ use crossbeam_channel::Sender as CCSender;
 use std::thread;
 use std::thread::JoinHandle;
 
-pub use self::op_population::{ConsecutiveActivePopulation, FiringActivePopulation, SilentActivePopulation, PassivePopulation};
-pub use self::op_device::{SilentPassiveDevice, FiringPassiveDevice, ConsecutiveActiveDevice, ConsecutivePassiveDevice, FiringActiveDevice, SilentActiveDevice};
-
 pub mod op_population;
 pub mod op_device;
 
@@ -67,8 +64,9 @@ pub trait Configurable {
 
 /// for RunningSet::new()
 pub trait Runnable {
+    type Confirm: Send;
     type Report: Send;
-    fn run(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<<Self as Runnable>::Report>);
+    fn run(&self, rx_confirm: CCReceiver<<Self as Runnable>::Confirm>, tx_report: CCSender<<Self as Runnable>::Report>);
 }
 
 /// for connectivity
@@ -84,7 +82,7 @@ pub struct RunningSet<C: Send, R: Send> {
 }
 
 impl<C: Send, R: Send> RunningSet<C, R> {
-    pub fn new<T>(device: Arc<Mutex<T>>) -> RunningSet<Broadcast, <T as Runnable>::Report>
+    pub fn new<T>(device: Arc<Mutex<T>>) -> RunningSet<<T as Runnable>::Confirm, <T as Runnable>::Report>
     where T: 'static + Runnable + Send + ?Sized
     {
         // for strict ordering of agent-connection_prop, bounded(1) is chosen.

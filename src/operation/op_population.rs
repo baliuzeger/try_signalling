@@ -4,7 +4,7 @@ use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use crate::operation::{RunningSet, Fired, Broadcast, Runnable, Configurable};
 
-pub trait FiringActivePopulation: Configurable + Runnable {
+pub trait FiringActivePopulation: Configurable + Runnable<Confirm = Broadcast, Report = Fired> {
     fn running_devices(&self) -> Vec<RunningSet<Broadcast, Fired>>;
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<Fired>) {
         // this version make all connections (only passive supported) into threads controlled by pre-devices.
@@ -64,7 +64,7 @@ pub trait FiringActivePopulation: Configurable + Runnable {
     }
 }
 
-pub trait ConsecutiveActivePopulation: Configurable + Runnable {
+pub trait ConsecutiveActivePopulation: Configurable + Runnable<Confirm = Broadcast, Report = ()> {
     fn running_devices(&self) -> Vec<RunningSet<Broadcast, ()>>;
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<()>) {
         // this version make all connections (only passive supported) into threads controlled by pre-devices.
@@ -107,7 +107,7 @@ pub trait ConsecutiveActivePopulation: Configurable + Runnable {
     }
 }
 
-pub trait SilentActivePopulation: Configurable + Runnable{
+pub trait SilentActivePopulation: Configurable + Runnable<Confirm = Broadcast, Report = ()> {
     fn running_devices(&self) -> Vec<RunningSet<Broadcast, ()>>;
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<()>) {
         // this version make all connections (only passive supported) into threads controlled by pre-devices.
