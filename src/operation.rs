@@ -65,15 +65,16 @@ pub trait Configurable {
     fn config_channels(&mut self);
 }
 
+/// for RunningSet::new()
 pub trait Runnable {
-    type Report;
-    fn run(&mut self);
+    type Report: Send;
+    fn run(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<<Self as Runnable>::Report>);
 }
 
 pub trait ActiveDevice {}
 
 /// for PassivePopulation & connectivity / OutComponents
-pub trait PassiveDevice: Runnable {}
+pub trait PassiveDevice: Runnable + Configurable {}
 
 pub struct RunningSet<C: Send, R: Send> {
     pub instance: JoinHandle<()>,

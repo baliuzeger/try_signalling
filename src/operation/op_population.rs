@@ -2,16 +2,10 @@ extern crate crossbeam_channel;
 use crate::random_sleep;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
-use crate::operation::{RunningSet, Fired, Broadcast, RunMode, Runnable, Configurable};
+use crate::operation::{RunningSet, Fired, Broadcast, Runnable, Configurable};
 
-pub trait FiringActivePopulation: Configurable{}
-pub trait ConsecutiveActivePopulation: Configurable{}
-pub trait SilentActivePopulation: Configurable{}
-pub trait PassivePopulation: Configurable{}
-
-impl<T: FiringActivePopulation> Runnable for T {
-    type Report = Fired;
-    
+pub trait FiringActivePopulation: Configurable + Runnable {
+    fn running_devices(&self) -> Vec<RunningSet<Broadcast, Fired>>;
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<Fired>) {
         // this version make all connections (only passive supported) into threads controlled by pre-devices.
         let running_devices = self.running_devices();
@@ -70,9 +64,8 @@ impl<T: FiringActivePopulation> Runnable for T {
     }
 }
 
-impl<T: ConsecutiveActivePopulation> Runnable for T {
-    type Report = ();
-
+pub trait ConsecutiveActivePopulation: Configurable + Runnable {
+    fn running_devices(&self) -> Vec<RunningSet<Broadcast, ()>>;
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<()>) {
         // this version make all connections (only passive supported) into threads controlled by pre-devices.
         let running_devices = self.running_devices();
@@ -114,9 +107,8 @@ impl<T: ConsecutiveActivePopulation> Runnable for T {
     }
 }
 
-impl<T: SilentActivePopulation> Runnable for T {
-    type Report = ();
-
+pub trait SilentActivePopulation: Configurable + Runnable{
+    fn running_devices(&self) -> Vec<RunningSet<Broadcast, ()>>;
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<()>) {
         // this version make all connections (only passive supported) into threads controlled by pre-devices.
         let running_devices = self.running_devices();
@@ -147,5 +139,7 @@ impl<T: SilentActivePopulation> Runnable for T {
                 Broadcast::Respond => panic!("SilentActivePopulation should not recv Finishcycle!"),
             }
         }
-    }    
+    }
 }
+
+pub trait PassivePopulation: Configurable{}
