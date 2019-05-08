@@ -2,14 +2,14 @@ extern crate crossbeam_channel;
 use crate::random_sleep;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
-use crate::operation::{RunningSet, Fired, Broadcast, RunMode, Runnable};
+use crate::operation::{RunningSet, Fired, Broadcast, RunMode, Runnable, Configurable};
 
-pub trait FiringActivePopulation: Configurable;
-pub trait ConsecutiveActivePopulation: Configurable;
-pub trait SilentActivePopulation: Configurable;
-pub trait PassivePopulation: Configurable;
+pub trait FiringActivePopulation: Configurable{}
+pub trait ConsecutiveActivePopulation: Configurable{}
+pub trait SilentActivePopulation: Configurable{}
+pub trait PassivePopulation: Configurable{}
 
-impl<T> Runnable for T: FiringActivePopulation {
+impl<T: FiringActivePopulation> Runnable for T {
     type Report = Fired;
     
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<Fired>) {
@@ -70,7 +70,7 @@ impl<T> Runnable for T: FiringActivePopulation {
     }
 }
 
-impl<T> Runnable for T: ConsecutiveActivePopulation {
+impl<T: ConsecutiveActivePopulation> Runnable for T {
     type Report = ();
 
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<()>) {
@@ -114,7 +114,7 @@ impl<T> Runnable for T: ConsecutiveActivePopulation {
     }
 }
 
-impl<T> Runnable for T: SilentActivePopulation {
+impl<T: SilentActivePopulation> Runnable for T {
     type Report = ();
 
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<()>) {
@@ -149,5 +149,3 @@ impl<T> Runnable for T: SilentActivePopulation {
         }
     }    
 }
-
-pub trait PassivePopulation;

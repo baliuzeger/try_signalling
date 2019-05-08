@@ -8,8 +8,8 @@ use std::thread::JoinHandle;
 pub use self::op_population::{ConsecutiveActivePopulation, FiringActivePopulation, SilentActivePopulation, PassivePopulation};
 pub use self::op_device::{SilentPassiveDevice, FiringPassiveDevice, ConsecutiveActiveDevice, ConsecutivePassiveDevice, FiringActiveDevice, SilentActiveDevice};
 
-pub mod population;
-pub mod device;
+pub mod op_population;
+pub mod op_device;
 
 pub enum Broadcast {
     Evolve,

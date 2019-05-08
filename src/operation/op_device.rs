@@ -37,7 +37,7 @@ pub trait SilentActiveDevice: Configurable {
     fn evolve(&mut self);
 }
 
-impl<T> Runnable for T: FiringActiveDevice {
+impl<T: FiringActiveDevice> Runnable for T {
     type Report = Fired;
     
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<Fired>) {
@@ -59,25 +59,25 @@ impl<T> Runnable for T: FiringActiveDevice {
                     break;
                 },
 
-                Broadcast::NewCycle => {
+                Broadcast::Evolve => {
                     match self.evolve() {
                         Fired::N => tx_report.send(Fired::N).unwrap(),
                         Fired::Y => {
                             random_sleep();
                             last_result = Fired::Y;
                             tx_report.send(Fired::Y).unwrap();
-                            // println!("agnt finished NewCycle.");
+                            // println!("agnt finished Evolve.");
                         }
                     }
                 },
 
-                Broadcast::FinishCycle => {
+                Broadcast::Respond => {
                     random_sleep();
                     match &mut last_result {
                         Fired::N => (),
                         Fired::Y => {
                             for r_cn in &running_devices {
-                                r_cn.confirm.send(Broadcast::FinishCycle).unwrap();
+                                r_cn.confirm.send(Broadcast::Respond).unwrap();
                             }
                             // println!("agnt waiting conn report finish Prop.");
                             for r_cn in &running_devices {
@@ -94,7 +94,7 @@ impl<T> Runnable for T: FiringActiveDevice {
     }
 }
 
-impl<T> Runnable for T: ConsecutiveActiveDevice {
+impl<T: ConsecutiveActiveDevice> Runnable for T {
     type Report = ();
 
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<()>) {
@@ -115,14 +115,14 @@ impl<T> Runnable for T: ConsecutiveActiveDevice {
                     break;
                 },
 
-                Broadcast::NewCycle => {
+                Broadcast::Evolve => {
                     self.evolve();
                     tx_report.send(()).unwrap();
                 },
 
-                Broadcast::FinishCycle => {
+                Broadcast::Respond => {
                     for r_cn in &running_devices {
-                        r_cn.confirm.send(Broadcast::FinishCycle).unwrap();
+                        r_cn.confirm.send(Broadcast::Respond).unwrap();
                     }
                     // println!("agnt waiting conn report finish Prop.");
                     for r_cn in &running_devices {
@@ -136,7 +136,7 @@ impl<T> Runnable for T: ConsecutiveActiveDevice {
     }
 }
 
-impl<T> Runnable for T: SilentActiveDevice {
+impl<T: SilentActiveDevice> Runnable for T {
     type Report = ();
 
     fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<()>) {
@@ -147,17 +147,17 @@ impl<T> Runnable for T: SilentActiveDevice {
                     self.end();
                     break;
                 },
-                Broadcast::NewCycle => {
+                Broadcast::Evolve => {
                     self.evolve();
                     tx_report.send(()).unwrap();
                 },
-                Broadcast::FinishCycle => panic!("SilentActivePopulation should not recv Finishcycle!"),
+                Broadcast::Respond => panic!("SilentActivePopulation should not recv Finishcycle!"),
             }
         }
     }
 }
 
-impl<T> Runnable for T: ConsecutivePassiveDevice{
+impl<T: ConsecutivePassiveDevice> Runnable for T {
     type Report = ();
 
     fn run(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<()>){
@@ -175,13 +175,13 @@ impl<T> Runnable for T: ConsecutivePassiveDevice{
                     }
                     break;
                 },
-                Broadcast::NewCycle => panic!("ConsecutivePassivedevice confirmed by NewCycle!"),
+                Broadcast::Evolve => panic!("ConsecutivePassivedevice confirmed by Evolve!"),
 
-                Broadcast::FinishCycle => {
+                Broadcast::Respond => {
                     // println!("conn wait recv signal.");
                     self.respond();
                     for r_cn in &running_devices {
-                        r_cn.confirm.send(Broadcast::FinishCycle).unwrap();
+                        r_cn.confirm.send(Broadcast::Respond).unwrap();
                     }
                     // println!("agnt waiting conn report finish Prop.");
                     for r_cn in &running_devices {
@@ -195,7 +195,7 @@ impl<T> Runnable for T: ConsecutivePassiveDevice{
     }    
 }
 
-impl<T> Runnable for T: FiringPassiveDevice{
+impl<T: FiringPassiveDevice> Runnable for T{
     type Report = ();
 
     fn run(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<()>){
@@ -213,16 +213,16 @@ impl<T> Runnable for T: FiringPassiveDevice{
                     }
                     break;
                 },
-                Broadcast::NewCycle => panic!("FiringPassivedevice confirmed by NewCycle!"),
+                Broadcast::Evolve => panic!("FiringPassivedevice confirmed by Evolve!"),
 
-                Broadcast::FinishCycle => {
+                Broadcast::Respond => {
                     random_sleep();
                     // println!("conn wait recv signal.");
                     match self.respond() {
                         Fired::N => (),
                         Fired::Y => {
                             for r_cn in &running_devices {
-                                r_cn.confirm.send(Broadcast::FinishCycle).unwrap();
+                                r_cn.confirm.send(Broadcast::Respond).unwrap();
                             }
                             // println!("agnt waiting conn report finish Prop.");
                             for r_cn in &running_devices {
@@ -237,7 +237,7 @@ impl<T> Runnable for T: FiringPassiveDevice{
     }
 }
 
-impl<T> Runnable for T: SilentPassiveDevice{
+impl<T: SilentPassiveDevice> Runnable for T{
     type Report = ();
 
     fn run(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<()>){
@@ -245,8 +245,8 @@ impl<T> Runnable for T: SilentPassiveDevice{
             random_sleep();
             match rx_confirm.recv().unwrap() {
                 Broadcast::Exit => break,
-                Broadcast::NewCycle => panic!("Passivedevice confirmed by NewCycle!"),
-                Broadcast::FinishCycle => {
+                Broadcast::Evolve => panic!("Passivedevice confirmed by Evolve!"),
+                Broadcast::Respond => {
                     // println!("conn wait recv signal.");
                     self.respond();
                     // println!("conn got & propagated signal.");
