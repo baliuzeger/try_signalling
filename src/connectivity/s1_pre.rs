@@ -1,5 +1,5 @@
 use crate::components::{MultiInComponent, MultiOutComponent, SingleInComponent, SingleOutComponent};
-use crate::connectivity::{Generator, PassiveAcceptor};
+use crate::connectivity::{Generator, PassiveAcceptor, ActiveAcceptor};
 
 #[derive(Copy, Clone)]
 pub struct FwdPreS1 {
@@ -11,7 +11,7 @@ pub struct FwdPreS1 {
 // }
 
 // Active_Multi_Out to Active_Multi_Out not implemented yet.
-pub type MultiOutComponentS1Pre = MultiOutComponent<dyn PassiveAcceptor<FwdPreS1>, FwdPreS1>;
+pub type MultiOutComponentS1Pre = MultiOutComponent<dyn ActiveAcceptor<FwdPreS1>, dyn PassiveAcceptor<FwdPreS1>, FwdPreS1>;
 
 pub type MultiInComponentS1Pre = MultiInComponent<dyn Generator<FwdPreS1>, FwdPreS1>;
 

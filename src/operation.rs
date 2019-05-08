@@ -70,7 +70,7 @@ pub trait Runnable {
 }
 
 /// for connectivity
-pub trait ActiveDevice: Runnable + Configurable {}
+pub trait ActiveDevice: Configurable {}
 
 /// for PassivePopulation & connectivity / OutComponents
 pub trait PassiveDevice: Runnable<Confirm = Broadcast, Report = ()> + Configurable {}

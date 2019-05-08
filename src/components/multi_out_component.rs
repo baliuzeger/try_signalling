@@ -1,26 +1,28 @@
 use std::sync::{Mutex, Weak, Arc};
 use crate::operation::{RunningSet, RunMode, DeviceMode, Broadcast};
-use crate::connectivity::{PassiveAcceptor};
+use crate::connectivity::{PassiveAcceptor, ActiveAcceptor};
 use crate::components::{OutSet, Linker};
 
-pub struct MultiOutComponent<CP, S>
-where CP: 'static + PassiveAcceptor<S> + Send + ?Sized,
-      S: Send
-      // CA: 'static + ActiveAcceptor<S> + Send + ?Sized,
+pub struct MultiOutComponent<CA, CP, S>
+where CA: 'static + ActiveAcceptor<S> + Send + ?Sized,
+      CP: 'static + PassiveAcceptor<S> + Send + ?Sized,
+      S: Send + Copy,
 {
     mode: RunMode,
     passive_out_sets: Vec<OutSet<CP, S>>,
-    // active_taegets: Vec<OutSet<CA, S>>
+    active_out_sets: Vec<OutSet<CA, S>>
 }
 
-impl<C, S> MultiOutComponent<C, S>
-where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
+impl<CA, CP, S> MultiOutComponent<CA, CP, S>
+where CA: 'static + ActiveAcceptor<S> + Send + ?Sized,
+      CP: 'static + PassiveAcceptor<S> + Send + ?Sized,
       S: Send + Copy,
 {
-    pub fn new() -> MultiOutComponent<C, S> {
+    pub fn new() -> MultiOutComponent<CA, CP, S> {
         MultiOutComponent {
             mode: RunMode::Idle,
             passive_out_sets: Vec::new(),
+            active_out_sets: Vec::new(),
         }
     }
 
@@ -28,10 +30,17 @@ where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
         self.mode
     }
     
-    pub fn add_passive_target(&mut self, target: Weak<Mutex<C>>, linker: Arc<Mutex<Linker<S>>>) {
+    pub fn add_active_target(&mut self, target: Weak<Mutex<CA>>, linker: Arc<Mutex<Linker<S>>>) {
+        match &mut self.mode {
+            RunMode::Idle => self.active_out_sets.push(OutSet::new(target, linker)), 
+            _ => panic!("can only add_active when DeviceMode::Idle!"),
+        }
+    }
+
+    pub fn add_passive_target(&mut self, target: Weak<Mutex<CP>>, linker: Arc<Mutex<Linker<S>>>) {
         match &mut self.mode {
             RunMode::Idle => self.passive_out_sets.push(OutSet::new(target, linker)), 
-            _ => panic!("can only add_conntion when DeviceMode::Idle!"),
+            _ => panic!("can only add_active when DeviceMode::Idle!"),
         }
     }
 
@@ -46,12 +55,18 @@ where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
 
     fn config_mode_to(&mut self, mode: RunMode) {
         self.mode = mode;
+        for set in &mut self.active_out_sets {
+            set.config_mode(mode);
+        }
         for set in &mut self.passive_out_sets {
             set.config_mode(mode);
         }
     }
     
     pub fn config_channels(&mut self) {
+        for set in &mut self.active_out_sets {
+            set.config_channels();
+        }
         for set in &mut self.passive_out_sets {
             set.config_channels();
         }
@@ -72,8 +87,13 @@ where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
 
     pub fn feedforward(&self, s: S) {
         match &self.mode {
-            RunMode::Feedforward => for set in &self.passive_out_sets {
-                set.feedforward(s);
+            RunMode::Feedforward => {
+                for set in &self.active_out_sets{
+                    set.feedforward(s);
+                }
+                for set in &self.passive_out_sets {
+                    set.feedforward(s);
+                }
             },
             _ => panic!("PreAgentmodules1 is not Feedforward when feedforward called!"),
         }
