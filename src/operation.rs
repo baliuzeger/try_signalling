@@ -71,7 +71,8 @@ pub trait Runnable {
     fn run(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<<Self as Runnable>::Report>);
 }
 
-pub trait ActiveDevice {}
+/// for connectivity
+pub trait ActiveDevice: Runnable + Configurable {}
 
 /// for PassivePopulation & connectivity / OutComponents
 pub trait PassiveDevice: Runnable + Configurable {}
