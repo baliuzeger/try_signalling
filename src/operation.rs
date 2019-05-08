@@ -73,7 +73,7 @@ pub trait Runnable {
 pub trait ActiveDevice: Runnable + Configurable {}
 
 /// for PassivePopulation & connectivity / OutComponents
-pub trait PassiveDevice: Runnable + Configurable {}
+pub trait PassiveDevice: Runnable<Confirm = Broadcast, Report = ()> + Configurable {}
 
 pub struct RunningSet<C: Send, R: Send> {
     pub instance: JoinHandle<()>,

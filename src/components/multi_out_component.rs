@@ -64,7 +64,7 @@ where C: 'static + PassiveAcceptor<S> + Send + ?Sized,
                 self.passive_out_sets.iter()
                     .filter_map(|set| match set.channels {
                         DeviceMode::Idle => None,
-                        DeviceMode::Feedforward(_) => Some(RunningSet::<Broadcast, ()>::new_passive_device(set.target.upgrade().unwrap()))
+                        DeviceMode::Feedforward(_) => Some(RunningSet::<Broadcast, ()>::new(set.target.upgrade().unwrap()))
                     }).collect()                
             }
         }
