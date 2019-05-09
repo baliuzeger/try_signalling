@@ -1,17 +1,23 @@
+use crossbeam_channel::Receiver as CCReceiver;
+use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc};
-use crate::operation::{RunMode, RunningSet, Broadcast, Fired};
-use crate::operation::firing_device::FiringDevice;
-use crate::operation::firing_population::FiringPopulation;
+use crate::operation::{RunMode, RunningSet, Broadcast, Fired, Configurable, Runnable};
+use crate::operation::op_device::FiringActiveDevice;
+use crate::operation::op_population::FiringActivePopulation;
 use crate::populations::HoldDevices;
 
-pub struct SimpleFiringPopulation<T: FiringDevice> {
+pub struct SimpleFiringPopulation<T>
+where T: 'static + FiringActiveDevice + Send,
+{
     devices: Vec<Arc<Mutex<T>>>,
 }
 
-impl<T: 'static + FiringDevice + Send> FiringPopulation for SimpleFiringPopulation<T> {
+impl<T> Configurable for SimpleFiringPopulation<T>
+where T: 'static + FiringActiveDevice + Send
+{
     fn config_mode(&mut self, mode: RunMode) {
         for device in &self.devices {
-            device.lock().unwrap().config_run(mode);
+            device.lock().unwrap().config_mode(mode);
         }
     }
 
@@ -20,20 +26,34 @@ impl<T: 'static + FiringDevice + Send> FiringPopulation for SimpleFiringPopulati
             device.lock().unwrap().config_channels();
         }
     }
+}
 
+impl<T> Runnable for SimpleFiringPopulation<T>
+    where T: 'static + FiringActiveDevice + Send,
+{
+    type Confirm = Broadcast;
+    type Report = Fired;
+    
+    fn run(&mut self, rx_confirm: CCReceiver<<Self as Runnable>::Confirm>, tx_report: CCSender<<Self as Runnable>::Report>) {
+        <Self as FiringActivePopulation>::run(self, rx_confirm, tx_report);
+    }
+    
+}
+
+impl<T: 'static + FiringActiveDevice + Send> FiringActivePopulation for SimpleFiringPopulation<T> {
     fn running_devices(&self) -> Vec<RunningSet<Broadcast, Fired>> {
-        self.devices.iter().map(|device| RunningSet::<Broadcast, Fired>::new_firing_device(Arc::clone(&device))).collect()
+        self.devices.iter().map(|device| RunningSet::<Broadcast, Fired>::new(Arc::clone(&device))).collect()
     }
 }
 
-impl<T: FiringDevice + Send> HoldDevices for SimpleFiringPopulation<T> {
+impl<T: FiringActiveDevice + Send> HoldDevices for SimpleFiringPopulation<T> {
     type Device = T;
     fn device_by_id(&self, n: usize) -> Arc<Mutex<T>> {
         Arc::clone(&self.devices[n])
     }    
 }
 
-impl<T: 'static + FiringDevice + Send>  SimpleFiringPopulation<T> {
+impl<T: 'static + FiringActiveDevice + Send>  SimpleFiringPopulation<T> {
     pub fn new() -> Arc<Mutex<SimpleFiringPopulation<T>>> {
         Arc::new(Mutex::new(SimpleFiringPopulation{
             devices: Vec::new(),

@@ -66,7 +66,7 @@ pub trait Configurable {
 pub trait Runnable {
     type Confirm: Send;
     type Report: Send;
-    fn run(&self, rx_confirm: CCReceiver<<Self as Runnable>::Confirm>, tx_report: CCSender<<Self as Runnable>::Report>);
+    fn run(&mut self, rx_confirm: CCReceiver<<Self as Runnable>::Confirm>, tx_report: CCSender<<Self as Runnable>::Report>);
 }
 
 /// for connectivity
