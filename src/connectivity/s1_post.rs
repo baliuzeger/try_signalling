@@ -18,6 +18,6 @@ pub type MultiOutComponentS1Post = MultiOutComponent<dyn ActiveAcceptor<FwdPostS
 pub type MultiInComponentS1Post = MultiInComponent<dyn Generator<FwdPostS1>, FwdPostS1>;
 
 // SingleOut to PassiveSingleOut not implemented yet.
-pub type SingleOutComponentS1Post<A> = SingleOutComponent<A, FwdPostS1>;
+pub type SingleOutComponentS1Post= SingleOutComponent<dyn ActiveAcceptor<FwdPostS1>, dyn PassiveAcceptor<FwdPostS1>, FwdPostS1>;
 
-pub type SingleInComponentS1Post<G> = SingleInComponent<G, FwdPostS1>;
+pub type SingleInComponentS1Post = SingleInComponent<dyn Generator<FwdPostS1>, FwdPostS1>;

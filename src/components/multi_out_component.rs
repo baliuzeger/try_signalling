@@ -3,22 +3,22 @@ use crate::operation::{RunningSet, RunMode, DeviceMode, Broadcast};
 use crate::connectivity::{PassiveAcceptor, ActiveAcceptor};
 use crate::components::{OutSet, Linker};
 
-pub struct MultiOutComponent<CA, CP, S>
-where CA: 'static + ActiveAcceptor<S> + Send + ?Sized,
-      CP: 'static + PassiveAcceptor<S> + Send + ?Sized,
+pub struct MultiOutComponent<AA, PA, S>
+where AA: 'static + ActiveAcceptor<S> + Send + ?Sized,
+      PA: 'static + PassiveAcceptor<S> + Send + ?Sized,
       S: Send + Copy,
 {
     mode: RunMode,
-    passive_out_sets: Vec<OutSet<CP, S>>,
-    active_out_sets: Vec<OutSet<CA, S>>
+    passive_out_sets: Vec<OutSet<PA, S>>,
+    active_out_sets: Vec<OutSet<AA, S>>
 }
 
-impl<CA, CP, S> MultiOutComponent<CA, CP, S>
-where CA: 'static + ActiveAcceptor<S> + Send + ?Sized,
-      CP: 'static + PassiveAcceptor<S> + Send + ?Sized,
+impl<AA, PA, S> MultiOutComponent<AA, PA, S>
+where AA: 'static + ActiveAcceptor<S> + Send + ?Sized,
+      PA: 'static + PassiveAcceptor<S> + Send + ?Sized,
       S: Send + Copy,
 {
-    pub fn new() -> MultiOutComponent<CA, CP, S> {
+    pub fn new() -> MultiOutComponent<AA, PA, S> {
         MultiOutComponent {
             mode: RunMode::Idle,
             passive_out_sets: Vec::new(),
@@ -30,14 +30,14 @@ where CA: 'static + ActiveAcceptor<S> + Send + ?Sized,
         self.mode
     }
     
-    pub fn add_active_target(&mut self, target: Weak<Mutex<CA>>, linker: Arc<Mutex<Linker<S>>>) {
+    pub fn add_active_target(&mut self, target: Weak<Mutex<AA>>, linker: Arc<Mutex<Linker<S>>>) {
         match &mut self.mode {
             RunMode::Idle => self.active_out_sets.push(OutSet::new(target, linker)), 
             _ => panic!("can only add_active when DeviceMode::Idle!"),
         }
     }
 
-    pub fn add_passive_target(&mut self, target: Weak<Mutex<CP>>, linker: Arc<Mutex<Linker<S>>>) {
+    pub fn add_passive_target(&mut self, target: Weak<Mutex<PA>>, linker: Arc<Mutex<Linker<S>>>) {
         match &mut self.mode {
             RunMode::Idle => self.passive_out_sets.push(OutSet::new(target, linker)), 
             _ => panic!("can only add_active when DeviceMode::Idle!"),

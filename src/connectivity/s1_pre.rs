@@ -16,6 +16,6 @@ pub type MultiOutComponentS1Pre = MultiOutComponent<dyn ActiveAcceptor<FwdPreS1>
 pub type MultiInComponentS1Pre = MultiInComponent<dyn Generator<FwdPreS1>, FwdPreS1>;
 
 // SingleOut to PassiveSingleOut not implemented yet.
-pub type SingleOutComponentS1Pre<A> = SingleOutComponent<A, FwdPreS1>;
+pub type SingleOutComponentS1Pre = SingleOutComponent<dyn ActiveAcceptor<FwdPreS1>, dyn PassiveAcceptor<FwdPreS1>, FwdPreS1>;
 
-pub type SingleInComponentS1Pre<G> = SingleInComponent<G, FwdPreS1>;
+pub type SingleInComponentS1Pre = SingleInComponent<dyn Generator<FwdPreS1>, FwdPreS1>;

@@ -1,33 +1,54 @@
 use std::sync::{Weak, Mutex, Arc};
 use crate::operation::RunMode;
-use crate::connectivity::PassiveAcceptor;
+use crate::connectivity::{ActiveAcceptor, PassiveAcceptor};
 use crate::components::{OutSet, Linker};
 
-pub struct SingleOutComponent<A, S>
-where A: PassiveAcceptor<S> + Send + ?Sized,
+pub struct SingleOutComponent<AA, PA, S>
+where AA: ActiveAcceptor<S> + Send + ?Sized,
+      PA: PassiveAcceptor<S> + Send + ?Sized,
       S: Send,
 {
     mode: RunMode,
-    out_set: Option<OutSet<A, S>>,
+    target: TargetStatus<AA, PA, S>,
 }
 
-impl<A, S> SingleOutComponent<A, S>
-where A: PassiveAcceptor<S> + Send + ?Sized,
+enum TargetStatus<AA, PA, S>
+where AA: ActiveAcceptor<S> + Send + ?Sized,
+      PA: PassiveAcceptor<S> + Send + ?Sized,
       S: Send,
 {
-    pub fn new() -> SingleOutComponent<A, S> {
+    None,
+    Active(OutSet<AA, S>),
+    Passive(OutSet<PA, S>)
+}
+
+impl<AA, PA, S> SingleOutComponent<AA, PA, S>
+where AA: ActiveAcceptor<S> + Send + ?Sized,
+      PA: PassiveAcceptor<S> + Send + ?Sized,
+      S: Send,
+{
+    pub fn new() -> SingleOutComponent<AA, PA, S> {
         SingleOutComponent {
             mode: RunMode::Idle,
-            out_set: None,
+            target: TargetStatus::None,
         }
     }
 
-
-    pub fn add_target(&mut self, target: Weak<Mutex<A>>, linker: Arc<Mutex<Linker<S>>>) {
+    pub fn add_active_target(&mut self, target: Weak<Mutex<AA>>, linker: Arc<Mutex<Linker<S>>>) {
         match &mut self.mode {
-            RunMode::Idle => match self.out_set {
-                None => self.out_set = Some(OutSet::new(target, linker)),
-                Some(_) => println!("SingleOutComponent already connected!"),
+            RunMode::Idle => match self.target {
+                TargetStatus::None => self.target = TargetStatus::Active(OutSet::new(target, linker)),
+                _ => println!("SingleOutComponent already connected!"),
+            }
+            _ => panic!("SingleOutComponent can only add_conntion when DeviceMode::Idle!"),
+        }
+    }
+
+    pub fn add_passive_target(&mut self, target: Weak<Mutex<PA>>, linker: Arc<Mutex<Linker<S>>>) {
+        match &mut self.mode {
+            RunMode::Idle => match self.target {
+                TargetStatus::None => self.target = TargetStatus::Passive(OutSet::new(target, linker)),
+                _ => println!("SingleOutComponent already connected!"),
             }
             _ => panic!("SingleOutComponent can only add_conntion when DeviceMode::Idle!"),
         }
@@ -48,24 +69,27 @@ where A: PassiveAcceptor<S> + Send + ?Sized,
 
     fn config_mode_to(&mut self, mode: RunMode) {
         self.mode = mode;
-        match &mut self.out_set {
-            None => (),
-            Some(set) => set.config_mode(mode),
+        match &mut self.target {
+            TargetStatus::None => (),
+            TargetStatus::Active(set) => set.config_mode(mode),
+            TargetStatus::Passive(set) => set.config_mode(mode),
         }
     }
     
     pub fn config_channels(&mut self) {
-        match &mut self.out_set {
-            None => (),
-            Some(set) => set.config_channels(),
+        match &mut self.target {
+            TargetStatus::None => (),
+            TargetStatus::Active(set) => set.config_channels(),
+            TargetStatus::Passive(set) => set.config_channels(),
         }
     }
 
     pub fn feedforward(&self, s: S) {
         match &self.mode {
-            RunMode::Feedforward => match &self.out_set {
-                None => (),
-                Some(set) => set.feedforward(s),
+            RunMode::Feedforward => match &self.target {
+                TargetStatus::None => (),
+                TargetStatus::Active(set) => set.feedforward(s),
+                TargetStatus::Passive(set) => set.feedforward(s),
             }
             _ => panic!("PreAgentmodules1 is not Feedforward when feedforward called!"),
         }
