@@ -12,6 +12,15 @@ pub struct Supervisor {
 }
 
 impl Supervisor {
+    pub fn new() -> Supervisor {
+        Supervisor {
+            consecutive_populations: HashMap::new(),
+            firing_populations: HashMap::new(),
+            silent_populations: HashMap::new(),
+            passive_populations:HashMap::new(),
+        }
+    }
+
     pub fn add_consecutive<T>(&mut self, key: String, pp: Weak<Mutex<T>>)
     where T: 'static + ConsecutiveActivePopulation + Send
     {
