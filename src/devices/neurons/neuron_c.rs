@@ -52,6 +52,10 @@ impl Configurable for NeuronC {
         self.in_s1_post.config_channels();
         self.out_s1_pre.config_channels();   
     }
+
+    fn mode(&self) -> RunMode {
+        RunMode::eq_mode(self.in_s1_post.mode(),self.out_s1_pre.mode())
+    }
 }
 
 impl ActiveDevice for NeuronC {}
@@ -99,9 +103,6 @@ impl FiringActiveDevice for NeuronC {
     }
 }
 
-
-
-
 impl NeuronC {
     pub fn new(gen_value: i32, proc_value: i32, event_cond: Option<i32>) -> Arc<Mutex<NeuronC>> {
         Arc::new(Mutex::new(
@@ -114,10 +115,6 @@ impl NeuronC {
                 stock: Vec::new(),
             }
         ))
-    }
-
-    fn mode(&self) -> RunMode {
-        RunMode::eq_mode(self.in_s1_post.mode(),self.out_s1_pre.mode())
     }
     
     fn generate(&self) {

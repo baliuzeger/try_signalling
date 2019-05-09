@@ -1,23 +1,19 @@
-extern crate crossbeam_channel;
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc, Weak};
-use crate::connections::{PassiveConnection};
-use crate::connections::signal_1::{FwdPreS1, FwdPostS1};
-use crate::connections::signal_1::{ConnectionComponentS1};
-use crate::supervisor::{RunMode};
-use crate::agent_populations::{HoldAgents};
-use crate::agents::{Generator, Acceptor};
+use crate::connectivity::s1_pre::SingleInComponentS1Pre;
+use crate::connectivity::s1_post::SingleOutComponentS1Post;
+use crate::operation::{Configurable, Runnable};
 
-pub struct Model<G, A>
-where G: Generator<FwdPreS1, FwdPostS1> + Send,
-      A: Acceptor<FwdPreS1, FwdPostS1> + Send
-{
-    module: ConnectionComponentS1<G, A>,
+pub struct ConnectionS1 {
+    in_s1_pre: SingleInComponentS1Pre,
+    out_s1_post: SingleOutComponentS1Post,
     value: i32,
 }
 
-impl<G, A> PassiveConnection<FwdPreS1, FwdPostS1> for Model<G, A>
+impl Configurable
+
+impl<G, A> PassiveConnection<FwdPreS1, FwdPostS1> for ConnectionS1<G, A>
 where G: Generator<FwdPreS1, FwdPostS1> + Send,
       A: Acceptor<FwdPreS1, FwdPostS1> + Send
 {
@@ -50,12 +46,12 @@ where G: Generator<FwdPreS1, FwdPostS1> + Send,
     }
 }
 
-impl<G: Generator<FwdPreS1, FwdPostS1> + Send, A: Acceptor<FwdPreS1, FwdPostS1> + Send> Model<G, A> {
-    pub fn new(pre: Weak<Mutex<G>>, post: Weak<Mutex<A>>, value: i32) -> Arc<Mutex<Model<G, A>>>
+impl<G: Generator<FwdPreS1, FwdPostS1> + Send, A: Acceptor<FwdPreS1, FwdPostS1> + Send> ConnectionS1<G, A> {
+    pub fn new(pre: Weak<Mutex<G>>, post: Weak<Mutex<A>>, value: i32) -> Arc<Mutex<ConnectionS1<G, A>>>
     where G:'static + Generator<FwdPreS1, FwdPostS1> + Send,
           A:'static + Acceptor<FwdPreS1, FwdPostS1> + Send
     {
-        let conn = Arc::new(Mutex::new(Model {
+        let conn = Arc::new(Mutex::new(ConnectionS1 {
             module: ConnectionComponentS1::new(pre.clone(), post.clone()),
             value,
         }));
@@ -64,7 +60,7 @@ impl<G: Generator<FwdPreS1, FwdPostS1> + Send, A: Acceptor<FwdPreS1, FwdPostS1> 
         conn
     }
 
-    pub fn new_on_populations<P1, P2>(value: i32, p1: &Arc<Mutex<P1>>, n1: usize, p2: &Arc<Mutex<P2>>, n2: usize) -> Arc<Mutex<Model<G, A>>>
+    pub fn new_on_populations<P1, P2>(value: i32, p1: &Arc<Mutex<P1>>, n1: usize, p2: &Arc<Mutex<P2>>, n2: usize) -> Arc<Mutex<ConnectionS1<G, A>>>
     where G:'static + Generator<FwdPreS1, FwdPostS1> + Send,
           A:'static + Acceptor<FwdPreS1, FwdPostS1> + Send,
           P1: HoldAgents<G>,
@@ -72,7 +68,7 @@ impl<G: Generator<FwdPreS1, FwdPostS1> + Send, A: Acceptor<FwdPreS1, FwdPostS1> 
     {
         let ag1 = Arc::downgrade(&p1.lock().unwrap().agent_by_id(n1));
         let ag2 = Arc::downgrade(&p2.lock().unwrap().agent_by_id(n2));
-        Model::new(ag1, ag2, value)
+        ConnectionS1::new(ag1, ag2, value)
     }
 
     fn refine(&self, s: FwdPreS1) -> FwdPostS1 {

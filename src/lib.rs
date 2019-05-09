@@ -1,7 +1,8 @@
 use std::thread;
 use std::time::Duration;
 use rand::Rng;
-
+// #[macro_use]
+// extern crate crossbeam_channel;
 
 #[cfg(test)]
 mod tests {

@@ -9,6 +9,7 @@ use crate::populations::HoldDevices;
 pub struct SimpleFiringPopulation<T>
 where T: 'static + FiringActiveDevice + Send,
 {
+    mode: RunMode,
     devices: Vec<Arc<Mutex<T>>>,
 }
 
@@ -16,6 +17,7 @@ impl<T> Configurable for SimpleFiringPopulation<T>
 where T: 'static + FiringActiveDevice + Send
 {
     fn config_mode(&mut self, mode: RunMode) {
+        self.mode = mode;
         for device in &self.devices {
             device.lock().unwrap().config_mode(mode);
         }
@@ -25,6 +27,10 @@ where T: 'static + FiringActiveDevice + Send
         for device in &self.devices {
             device.lock().unwrap().config_channels();
         }
+    }
+
+    fn mode(&self) -> RunMode {
+        self.mode
     }
 }
 
@@ -56,6 +62,7 @@ impl<T: FiringActiveDevice + Send> HoldDevices for SimpleFiringPopulation<T> {
 impl<T: 'static + FiringActiveDevice + Send>  SimpleFiringPopulation<T> {
     pub fn new() -> Arc<Mutex<SimpleFiringPopulation<T>>> {
         Arc::new(Mutex::new(SimpleFiringPopulation{
+            mode: RunMode::Idle,
             devices: Vec::new(),
         }))
     }

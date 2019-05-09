@@ -6,6 +6,7 @@ use crate::populations::HoldDevices;
 pub struct SimplePassivePopulation<T>
 where T: 'static + PassiveDevice + Send
 {
+    mode: RunMode,
     devices: Vec<Arc<Mutex<T>>>,
 }
 
@@ -13,7 +14,7 @@ impl<T> Configurable for SimplePassivePopulation<T>
 where T: 'static + PassiveDevice + Send
 {
     fn config_mode(&mut self, mode: RunMode) {
-        // println!("SimplePassiveconnectionpopulation config_run.");
+        self.mode = mode;
         for device in &self.devices {
             device.lock().unwrap().config_mode(mode);
         }
@@ -23,6 +24,10 @@ where T: 'static + PassiveDevice + Send
         for device in &self.devices {
             device.lock().unwrap().config_channels();
         }
+    }
+
+    fn mode(&self) -> RunMode {
+        self.mode
     }
 }
 
@@ -44,6 +49,7 @@ where T: 'static + PassiveDevice + Send
 {
     pub fn new() -> Arc<Mutex<SimplePassivePopulation<T>>> {
         Arc::new(Mutex::new(SimplePassivePopulation{
+            mode: RunMode::Idle,
             devices: Vec::new(),
         }))
     }
