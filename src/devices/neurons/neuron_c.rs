@@ -1,8 +1,12 @@
+use crossbeam_channel::Receiver as CCReceiver;
+use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc, Weak};
 use crate::connectivity::s1_pre::{MultiOutComponentS1Pre, FwdPreS1};
 use crate::connectivity::s1_post::{MultiInComponentS1Post, FwdPostS1};
-use crate::connectivity::{Generator, Acceptor};
-use crate::operation::{ActiveDevice, FiringDevice};
+use crate::connectivity::{Generator, Acceptor, ActiveAcceptor, PassiveAcceptor};
+use crate::operation::{ActiveDevice, Configurable, Runnable, Broadcast, Fired, RunMode, RunningSet};
+use crate::operation::op_device::FiringActiveDevice;
+use crate::components::Linker;
 
 pub struct NeuronC {
     out_s1_pre: MultiOutComponentS1Pre,
@@ -19,9 +23,15 @@ struct FwdEndProduct {
     pub msg_proc: i32,
 }
 
-impl Generator<FwdPreS1> for Model {
+impl Generator<FwdPreS1> for NeuronC {
+    fn add_active<A>(&mut self, post: Weak<Mutex<A>>, linker: Arc<Mutex<Linker<FwdPreS1>>>)
+        where A: ActiveAcceptor<FwdPreS1>,
+    {
+        self.out_s1_pre.add_active_target(post, linker);
+    }
+
     fn add_passive<A>(&mut self, post: Weak<Mutex<A>>, linker: Arc<Mutex<Linker<FwdPreS1>>>)
-        where A: PassiveAcceptor<FwdPreS1>,
+    where A: PassiveAcceptor<FwdPreS1>,
     {
         self.out_s1_pre.add_passive_target(post, linker);
     }
@@ -35,79 +45,72 @@ impl Acceptor<FwdPostS1> {
     }
 }
 
-impl NeuronC ActiveDevice {}
-
-impl NeuronC FiringDevice {
-    fn config_run(&mut self, mode: RunMode);
-    fn config_channels(&mut self);
-    fn running_passive_devices(&self) -> Vec<RunningSet<Broadcast, ()>>;
-    fn end(&mut self);
-    fn evolve(&mut self) -> Fired;
-}
-
-
-impl Agent for Model {
-    fn config_run(&mut self, mode: RunMode) {
-        match (mode, self.mode()) {
-            (RunMode::Idle, _) => println!("config_run for mode Idle, no effect."),
-            (_, RunMode::Idle) => {
-                self.pre_module_s1.config_run(mode);
-                self.post_module_s1.config_run(mode);
-            },
-            (_, _) => panic!("call config_run when agent not idle!")
-        }
-    }
-
-    fn config_idle(&mut self) {
-        match &self.mode() {
-            RunMode::Idle => println!("config_idel at mode Idle, no effect."),
-            RunMode::Feedforward => {
-                self.pre_module_s1.config_idle();
-                self.post_module_s1.config_idle();
-            },
-        }
-    }
-
-    fn running_connections(&self) -> Vec<RunningPassiveConnection> {
-        self.pre_module_s1.running_connections()
+impl Configurable for NeuronC {
+    fn config_mode(&mut self, mode: RunMode) {
+        self.in_s1_post.config_run(mode);
+        self.out_s1_pre.config_run(mode);
     }
     
+    fn config_channels(&mut self) {
+        self.in_s1_post.config_channels();
+        self.out_s1_pre.config_channels();   
+    }
+}
+
+impl ActiveDevice for NeuronC {}
+
+impl Runnable for NeuronC {
+    type Confirm = Broadcast;
+    type Report = Fired;
+    fn run(&mut self, rx_confirm: CCReceiver<<Self as Runnable>::Confirm>, tx_report: CCSender<<Self as Runnable>::Report>) {
+        <Self as FiringActiveDevice>::run(self, rx_confirm, tx_report);
+    }
+}
+
+impl FiringActiveDevice for NeuronC {
     fn end(&mut self) {
         self.accept();
     }
     
-    fn evolve(&mut self) -> AgentEvent {
+    fn evolve(&mut self) -> Fired {
         self.accept();
         self.proc_value += 1;
         self.gen_value += 1;
         match self.event_cond {
             None => {
                 // println!("agnet a go on. gen: {}, proc: {}.",  self.gen_value, self.proc_value);
-                AgentEvent::N   
+                Fired::N   
             },
             Some(n) => {
                 match self.proc_value % n {
                     0 => {
                         println!("agnet c fire. gen: {}, proc: {}.",  self.gen_value, self.proc_value);
                         self.generate();
-                        AgentEvent::Y
+                        Fired::Y
                     },
                     _ => {
                         // println!("agnet a go on. gen: {}, proc: {}.",  self.gen_value, self.proc_value);
-                        AgentEvent::N
+                        Fired::N
                     },
                 }
             }
         }
     }
+
+    fn running_passive_devices(&self) -> Vec<RunningSet<Broadcast, ()>> {
+        self.out_s1_pre.running_passive_targets()
+    }
 }
 
-impl Model {
-    pub fn new(gen_value: i32, proc_value: i32, event_cond: Option<i32>) -> Arc<Mutex<Model>> {
+
+
+
+impl NeuronC {
+    pub fn new(gen_value: i32, proc_value: i32, event_cond: Option<i32>) -> Arc<Mutex<NeuronC>> {
         Arc::new(Mutex::new(
-            Model{
-                pre_module_s1: PreAgentComponentS1::new(),
-                post_module_s1: PostAgentComponentS1::new(),
+            NeuronC {
+                out_s1_pre: MultiOutComponentS1Pre::new(),
+                in_s1_post: MultiInComponentS1Post::new(),
                 gen_value,
                 proc_value,
                 event_cond,
@@ -117,17 +120,17 @@ impl Model {
     }
 
     fn mode(&self) -> RunMode {
-        RunMode::eq_mode(self.pre_module_s1.mode(),self.post_module_s1.mode())
+        RunMode::eq_mode(self.in_s1_post.mode(),self.out_s1_pre.mode())
     }
     
     fn generate(&self) {
-        self.pre_module_s1.feedforward(FwdPreS1 {
+        self.out_s1_pre.feedforward(FwdPreS1 {
             msg_gen: self.gen_value,
         });
     }
 
     fn accept(&mut self) {
-        let mut acc = self.post_module_s1.ffw_accepted().iter().map(|s| FwdEndProduct {
+        let mut acc = self.in_s1_post.ffw_accepted().iter().map(|s| FwdEndProduct {
                 msg_gen: s.msg_gen,
                 msg_prop: s.msg_prop,
                 msg_proc: self.proc_value,

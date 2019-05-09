@@ -6,12 +6,12 @@ pub mod s1_pre;
 pub mod s1_post;
 // pub mod signal_2;
 
-pub trait Generator<S: Send> {
+pub trait Generator<S: Send>: Send {
     fn add_active<A: ActiveAcceptor<S>>(&mut self, post: Weak<Mutex<A>>, linker: Arc<Mutex<Linker<S>>>);
     fn add_passive<A: PassiveAcceptor<S>>(&mut self, post: Weak<Mutex<A>>, linker: Arc<Mutex<Linker<S>>>);
 }
 
-pub trait Acceptor<S: Send> {
+pub trait Acceptor<S: Send>: Send {
     fn add<G: Generator<S>>(&mut self, pre: Weak<Mutex<G>>, linker: Arc<Mutex<Linker<S>>>);
 }
 
