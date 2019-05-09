@@ -24,22 +24,19 @@ struct FwdEndProduct {
 }
 
 impl Generator<FwdPreS1> for NeuronC {
-    fn add_active<A>(&mut self, post: Weak<Mutex<A>>, linker: Arc<Mutex<Linker<FwdPreS1>>>)
-        where A: ActiveAcceptor<FwdPreS1>,
+    fn add_active(&mut self, post: Weak<Mutex<dyn ActiveAcceptor<FwdPreS1>>>, linker: Arc<Mutex<Linker<FwdPreS1>>>)
     {
         self.out_s1_pre.add_active_target(post, linker);
     }
 
-    fn add_passive<A>(&mut self, post: Weak<Mutex<A>>, linker: Arc<Mutex<Linker<FwdPreS1>>>)
-    where A: PassiveAcceptor<FwdPreS1>,
+    fn add_passive(&mut self, post: Weak<Mutex<dyn PassiveAcceptor<FwdPreS1>>>, linker: Arc<Mutex<Linker<FwdPreS1>>>)
     {
         self.out_s1_pre.add_passive_target(post, linker);
     }
 }
 
-impl Acceptor<FwdPostS1> {
-    fn add<G>(&mut self, pre: Weak<Mutex<G>>, linker: Arc<Mutex<Linker<FwdPostS1>>>)
-    where G: Generator<FwdPostS1>,
+impl Acceptor<FwdPostS1> for NeuronC {
+    fn add(&mut self, pre: Weak<Mutex<dyn Generator<FwdPostS1>>>, linker: Arc<Mutex<Linker<FwdPostS1>>>)
     {
         self.in_s1_post.add_target(pre, linker);
     }
@@ -47,8 +44,8 @@ impl Acceptor<FwdPostS1> {
 
 impl Configurable for NeuronC {
     fn config_mode(&mut self, mode: RunMode) {
-        self.in_s1_post.config_run(mode);
-        self.out_s1_pre.config_run(mode);
+        self.in_s1_post.config_mode(mode);
+        self.out_s1_pre.config_mode(mode);
     }
     
     fn config_channels(&mut self) {
