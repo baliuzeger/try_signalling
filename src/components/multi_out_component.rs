@@ -73,7 +73,7 @@ where AA: 'static + ActiveAcceptor<S> + Send + ?Sized,
 
     pub fn running_passive_targets(&self) -> Vec<RunningSet<Broadcast, ()>> {
         match &self.mode {
-            RunMode::Idle => panic!("call running_passive_targets when agent Idle!"),
+            RunMode::Idle => panic!("MultiOutComponent call running_passive_targets when agent Idle!"),
             RunMode::Feedforward => {
                 self.passive_out_sets.iter()
                     .filter_map(|set| match set.channels {

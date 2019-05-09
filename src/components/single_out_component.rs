@@ -1,11 +1,11 @@
 use std::sync::{Weak, Mutex, Arc};
-use crate::operation::RunMode;
+use crate::operation::{RunMode, RunningSet, Broadcast};
 use crate::connectivity::{ActiveAcceptor, PassiveAcceptor};
 use crate::components::{OutSet, Linker};
 
 pub struct SingleOutComponent<AA, PA, S>
 where AA: ActiveAcceptor<S> + Send + ?Sized,
-      PA: PassiveAcceptor<S> + Send + ?Sized,
+      PA: 'static + PassiveAcceptor<S> + Send + ?Sized,
       S: Send,
 {
     mode: RunMode,
@@ -14,7 +14,7 @@ where AA: ActiveAcceptor<S> + Send + ?Sized,
 
 enum TargetStatus<AA, PA, S>
 where AA: ActiveAcceptor<S> + Send + ?Sized,
-      PA: PassiveAcceptor<S> + Send + ?Sized,
+      PA: 'static + PassiveAcceptor<S> + Send + ?Sized,
       S: Send,
 {
     None,
@@ -24,7 +24,7 @@ where AA: ActiveAcceptor<S> + Send + ?Sized,
 
 impl<AA, PA, S> SingleOutComponent<AA, PA, S>
 where AA: ActiveAcceptor<S> + Send + ?Sized,
-      PA: PassiveAcceptor<S> + Send + ?Sized,
+      PA: 'static + PassiveAcceptor<S> + Send + ?Sized,
       S: Send,
 {
     pub fn new() -> SingleOutComponent<AA, PA, S> {
@@ -84,6 +84,20 @@ where AA: ActiveAcceptor<S> + Send + ?Sized,
         }
     }
 
+    pub fn running_passive_targets(&self) -> Vec<RunningSet<Broadcast, ()>> {
+        match &self.mode {
+            RunMode::Idle => panic!("SingleOutComponent call running_passive_targets when agent Idle!"),
+            RunMode::Feedforward => match &self.target {
+                TargetStatus::Passive(set) => {
+                    let mut v = Vec::with_capacity(1);
+                    v.push(RunningSet::<Broadcast, ()>::new(set.target.upgrade().unwrap()));
+                    v
+                }
+                _ => Vec::with_capacity(0)
+            }
+        }
+    }
+    
     pub fn feedforward(&self, s: S) {
         match &self.mode {
             RunMode::Feedforward => match &self.target {
@@ -94,5 +108,4 @@ where AA: ActiveAcceptor<S> + Send + ?Sized,
             _ => panic!("PreAgentmodules1 is not Feedforward when feedforward called!"),
         }
     }
-    
 }

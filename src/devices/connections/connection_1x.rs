@@ -3,7 +3,8 @@ use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc, Weak};
 use crate::connectivity::s1_pre::SingleInComponentS1Pre;
 use crate::connectivity::s1_post::SingleOutComponentS1Post;
-use crate::operation::{Configurable, Runnable};
+use crate::operation::{Configurable, Runnable, RunningSet, Broadcast};
+use crate::operation::op_device::ConsecutivePassiveDevice;
 
 pub struct ConnectionS1 {
     in_s1_pre: SingleInComponentS1Pre,
@@ -11,39 +12,43 @@ pub struct ConnectionS1 {
     value: i32,
 }
 
-impl Configurable
+impl Configurable for ConnectionS1 {
+    fn config_mode(&mut self, mode: RunMode) {
+        self.in_s1_pre.config_mode(mode);
+        self.out_s1_post.config_mode(mode);
+    }
+    
+    fn config_channels(&mut self) {
+        self.in_s1_pre.config_channels();
+        self.out_s1_post.config_channels();   
+    }
+
+    fn mode(&self) -> RunMode {
+        RunMode::eq_mode(self.in_s1_post.mode(),self.out_s1_pre.mode())
+    }
+}
+
+impl ConsecutivePassiveDevice for ConnectionS1 {
+    fn respond(&self) {
+        self.out_s1_post.feedforward(self.refine(self.in_s1_pre.ffw_accepted()));
+    }
+    
+    fn running_passive_devices(&self) -> Vec<RunningSet<Broadcast, ()>> {
+        
+    }
+}
 
 impl<G, A> PassiveConnection<FwdPreS1, FwdPostS1> for ConnectionS1<G, A>
 where G: Generator<FwdPreS1, FwdPostS1> + Send,
       A: Acceptor<FwdPreS1, FwdPostS1> + Send
 {
-    fn mode(&self) -> RunMode {
-        // println!("connection1x mode: {:?}.", self.module.mode());
-        self.module.mode()
-    }
 
-    fn config_run(&mut self, mode: RunMode) {
-        // println!("connection_1x config_run.");
-        self.module.config_run(mode);
-    }
-    
-    fn config_idle(&mut self) {
-        self.module.config_idle();
-    }
     
     fn propagate(&self) {
         self.module.export(self.refine(self.module.import()));
     }
 
-    fn set_pre_channel_ffw(&mut self, channel: Option<CCReceiver<FwdPreS1>>) {
-        // println!("connection_1x setting pre_channel.");
-        self.module.set_pre_channel_ffw(channel);
-    }
-    
-    fn set_post_channel_ffw(&mut self, channel: Option<CCSender<FwdPostS1>>) {
-        // println!("connection_1x setting post_channel.");
-        self.module.set_post_channel_ffw(channel);        
-    }
+
 }
 
 impl<G: Generator<FwdPreS1, FwdPostS1> + Send, A: Acceptor<FwdPreS1, FwdPostS1> + Send> ConnectionS1<G, A> {
