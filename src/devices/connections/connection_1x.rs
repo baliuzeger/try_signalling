@@ -1,10 +1,12 @@
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc, Weak};
-use crate::connectivity::s1_pre::SingleInComponentS1Pre;
-use crate::connectivity::s1_post::SingleOutComponentS1Post;
-use crate::operation::{Configurable, Runnable, RunningSet, Broadcast};
+use crate::connectivity::{Generator, Acceptor, PassiveAcceptor, ActiveAcceptor};
+use crate::connectivity::s1_pre::{SingleInComponentS1Pre, FwdPreS1};
+use crate::connectivity::s1_post::{SingleOutComponentS1Post, FwdPostS1};
+use crate::operation::{Configurable, Runnable, RunningSet, Broadcast, PassiveDevice, RunMode};
 use crate::operation::op_device::ConsecutivePassiveDevice;
+use crate::components::Linker;
 
 pub struct ConnectionS1 {
     in_s1_pre: SingleInComponentS1Pre,
@@ -24,56 +26,54 @@ impl Configurable for ConnectionS1 {
     }
 
     fn mode(&self) -> RunMode {
-        RunMode::eq_mode(self.in_s1_post.mode(),self.out_s1_pre.mode())
+        RunMode::eq_mode(self.in_s1_pre.mode(),self.out_s1_post.mode())
+    }
+}
+
+impl PassiveDevice for ConnectionS1 {}
+
+impl Runnable for ConnectionS1 {
+    type Confirm = Broadcast;
+    type Report = ();
+
+    fn run(&mut self, rx_confirm: CCReceiver<<Self as Runnable>::Confirm>, tx_report: CCSender<<Self as Runnable>::Report>) {
+        <Self as ConsecutivePassiveDevice>::run(self, rx_confirm, tx_report);
     }
 }
 
 impl ConsecutivePassiveDevice for ConnectionS1 {
     fn respond(&self) {
-        self.out_s1_post.feedforward(self.refine(self.in_s1_pre.ffw_accepted()));
+        self.in_s1_pre.ffw_accepted().into_iter().for_each(|s| self.out_s1_post.feedforward(self.refine(s)));
     }
     
     fn running_passive_devices(&self) -> Vec<RunningSet<Broadcast, ()>> {
-        
+        self.out_s1_post.running_passive_devices()
     }
 }
 
-impl<G, A> PassiveConnection<FwdPreS1, FwdPostS1> for ConnectionS1<G, A>
-where G: Generator<FwdPreS1, FwdPostS1> + Send,
-      A: Acceptor<FwdPreS1, FwdPostS1> + Send
-{
+impl Acceptor<FwdPreS1> for ConnectionS1 {
+    fn add(&mut self, pre: Weak<Mutex<dyn Generator<FwdPreS1>>>, linker: Arc<Mutex<Linker<FwdPreS1>>>) {
+        self.in_s1_pre.add_target(pre, linker);
+    }
+}
 
+impl Generator<FwdPostS1> for ConnectionS1 {
+    fn add_active(&mut self, post: Weak<Mutex<dyn ActiveAcceptor<FwdPostS1>>>, linker: Arc<Mutex<Linker<FwdPostS1>>>) {
+        self.out_s1_post.add_active_target(post, linker);
+    }
     
-    fn propagate(&self) {
-        self.module.export(self.refine(self.module.import()));
+    fn add_passive(&mut self, post: Weak<Mutex<dyn PassiveAcceptor<FwdPostS1>>>, linker: Arc<Mutex<Linker<FwdPostS1>>>) {
+        self.out_s1_post.add_passive_target(post, linker);
     }
-
-
 }
 
-impl<G: Generator<FwdPreS1, FwdPostS1> + Send, A: Acceptor<FwdPreS1, FwdPostS1> + Send> ConnectionS1<G, A> {
-    pub fn new(pre: Weak<Mutex<G>>, post: Weak<Mutex<A>>, value: i32) -> Arc<Mutex<ConnectionS1<G, A>>>
-    where G:'static + Generator<FwdPreS1, FwdPostS1> + Send,
-          A:'static + Acceptor<FwdPreS1, FwdPostS1> + Send
-    {
-        let conn = Arc::new(Mutex::new(ConnectionS1 {
-            module: ConnectionComponentS1::new(pre.clone(), post.clone()),
+impl ConnectionS1 {
+    pub fn new(value: i32) -> Arc<Mutex<ConnectionS1>> {
+        Arc::new(Mutex::new(ConnectionS1 {
+            in_s1_pre: SingleInComponentS1Pre::new(),
+            out_s1_post: SingleOutComponentS1Post::new(),
             value,
-        }));
-        pre.upgrade().unwrap().lock().unwrap().add_out_passive(Arc::downgrade(&conn));
-        post.upgrade().unwrap().lock().unwrap().add_in(Arc::downgrade(&conn));
-        conn
-    }
-
-    pub fn new_on_populations<P1, P2>(value: i32, p1: &Arc<Mutex<P1>>, n1: usize, p2: &Arc<Mutex<P2>>, n2: usize) -> Arc<Mutex<ConnectionS1<G, A>>>
-    where G:'static + Generator<FwdPreS1, FwdPostS1> + Send,
-          A:'static + Acceptor<FwdPreS1, FwdPostS1> + Send,
-          P1: HoldAgents<G>,
-          P2: HoldAgents<A>,
-    {
-        let ag1 = Arc::downgrade(&p1.lock().unwrap().agent_by_id(n1));
-        let ag2 = Arc::downgrade(&p2.lock().unwrap().agent_by_id(n2));
-        ConnectionS1::new(ag1, ag2, value)
+        }))
     }
 
     fn refine(&self, s: FwdPreS1) -> FwdPostS1 {

@@ -99,7 +99,7 @@ impl FiringActiveDevice for NeuronC {
     }
 
     fn running_passive_devices(&self) -> Vec<RunningSet<Broadcast, ()>> {
-        self.out_s1_pre.running_passive_targets()
+        self.out_s1_pre.running_passive_devices()
     }
 }
 
