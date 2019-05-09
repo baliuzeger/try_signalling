@@ -1,17 +1,16 @@
 use std::sync::{Arc, Mutex};
-use crate::operation::{RunMode};
-use crate::operation::passive_device::PassiveDevice;
-use crate::operation::passive_population::PassivePopulation;
+use crate::operation::{RunMode, PassiveDevice, Configurable};
+use crate::operation::op_population::PassivePopulation;
 use crate::populations::HoldDevices;
 
 pub struct SimplePassivePopulation<T>
-where T: PassiveDevice,
+where T: 'static + PassiveDevice + Send
 {
     devices: Vec<Arc<Mutex<T>>>,
 }
 
-impl<T> PassivePopulation for SimplePassivePopulation<T>
-where T: PassiveDevice,
+impl<T> Configurable for SimplePassivePopulation<T>
+where T: 'static + PassiveDevice + Send
 {
     fn config_mode(&mut self, mode: RunMode) {
         // println!("SimplePassiveconnectionpopulation config_run.");
@@ -27,7 +26,13 @@ where T: PassiveDevice,
     }
 }
 
-impl<T: FiringDevice + Send> HoldDevices for SimplePassivePopulation<T> {
+impl<T> PassivePopulation for SimplePassivePopulation<T>
+where T: 'static + PassiveDevice + Send
+{}
+
+impl<T> HoldDevices for SimplePassivePopulation<T>
+where T: 'static + PassiveDevice + Send
+{
     type Device = T;
     fn device_by_id(&self, n: usize) -> Arc<Mutex<T>> {
         Arc::clone(&self.devices[n])
@@ -35,7 +40,7 @@ impl<T: FiringDevice + Send> HoldDevices for SimplePassivePopulation<T> {
 }
 
 impl<T>  SimplePassivePopulation<T>
-where T: PassiveDevice,
+where T: 'static + PassiveDevice + Send
 {
     pub fn new() -> Arc<Mutex<SimplePassivePopulation<T>>> {
         Arc::new(Mutex::new(SimplePassivePopulation{
