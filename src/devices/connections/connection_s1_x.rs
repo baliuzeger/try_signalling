@@ -77,7 +77,7 @@ impl ConnectionS1X {
         }))
     }
 
-    pub fn new_with_passive(value: i32, pre: Arc<Mutex<G>>, post: Arc<Mutex<A>>) -> Arc<Mutex<ConnectionS1X>>
+    pub fn new_with_passive<G, A>(value: i32, pre: Arc<Mutex<G>>, post: Arc<Mutex<A>>) -> Arc<Mutex<ConnectionS1X>>
     where G: Generator<FwdPreS1>,
           A: PassiveAcceptor<FwdPostS1>,
     {
