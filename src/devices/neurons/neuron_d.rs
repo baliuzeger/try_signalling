@@ -128,8 +128,7 @@ impl NeuronD {
         let mut acc = self.in_s1_pre.ffw_accepted().iter().map(|s| FwdEndProduct {
             msg: s.msg_gen,
             proc: self.proc_value,
-            }  
-        ).collect::<Vec<FwdEndProduct>>();
+        }).collect::<Vec<FwdEndProduct>>();
 
         // for demo accepting
         for msg in &acc {
