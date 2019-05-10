@@ -28,14 +28,9 @@ fn main() {
         Arc::downgrade(&pp_conn_s1_x)
     );
 
-    
-    
     // pp_agnt_c[2] get 2 S1 from pp_agnt_c[0 & 1].
-    //pp_conn_s1_x.lock().unwrap().add(ConnectionS1X::new_on_populations(10, &pp_neuron_c, 0, &pp_neuron_c, 2));
-    
-    // pp_conn_1cc.lock().unwrap().add_connection(ConnectionS1X::new_on_populations(10, &pp_agnt_c, 0, &pp_agnt_c, 2));
-    // pp_conn_1cc.lock().unwrap().add_connection(ConnectionS1X::new_on_populations(11, &pp_agnt_c, 1, &pp_agnt_c, 2));
-
+    pp_conn_s1_x.lock().unwrap().add(ConnectionS1X::new_with_active_population(10, &pp_neuron_c, 0, &pp_neuron_c, 2));
+    pp_conn_s1_x.lock().unwrap().add(ConnectionS1X::new_with_active_population(11, &pp_neuron_c, 1, &pp_neuron_c, 2));
 
     // // make Connection1x a -> a
     // let name_ppc_1aa = String::from("Connection PP 1AA");

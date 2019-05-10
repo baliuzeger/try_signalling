@@ -52,8 +52,7 @@ impl<T: 'static + FiringActiveDevice + Send> FiringActivePopulation for SimpleFi
     }
 }
 
-impl<T: FiringActiveDevice + Send> HoldDevices for SimpleFiringPopulation<T> {
-    type Device = T;
+impl<T: FiringActiveDevice + Send> HoldDevices<T> for SimpleFiringPopulation<T> {
     fn device_by_id(&self, n: usize) -> Arc<Mutex<T>> {
         Arc::clone(&self.devices[n])
     }    

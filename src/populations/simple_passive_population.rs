@@ -35,10 +35,9 @@ impl<T> PassivePopulation for SimplePassivePopulation<T>
 where T: 'static + PassiveDevice + Send
 {}
 
-impl<T> HoldDevices for SimplePassivePopulation<T>
+impl<T> HoldDevices<T> for SimplePassivePopulation<T>
 where T: 'static + PassiveDevice + Send
 {
-    type Device = T;
     fn device_by_id(&self, n: usize) -> Arc<Mutex<T>> {
         Arc::clone(&self.devices[n])
     }    
