@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 use crate::operation::{PassiveDevice, ActiveDevice};
 use crate::components::Linker;
+use crate::populations::HoldDevices;
 use crate::{AcMx, WcMx};
 
 pub mod s1_pre;
@@ -48,7 +49,7 @@ where S: Send,
 //     post.lock().unwrap().add(Arc::downgrade(&pre), linker);
 // }
 
-pub fn connect_passive<G, A, S> (pre: AcMx<G>, post: AcMx<A>)
+pub fn connect_passive<G, A, S>(pre: AcMx<G>, post: AcMx<A>)
 where G: 'static + Generator<S>,
       A: 'static + PassiveAcceptor<S> ,
       S: Send,
@@ -56,6 +57,18 @@ where G: 'static + Generator<S>,
     let linker = Linker::new();
     pre.lock().unwrap().add_passive(Arc::<Mutex<A>>::downgrade(&post), Arc::clone(&linker));
     post.lock().unwrap().add(Arc::<Mutex<G>>::downgrade(&pre), linker);
+}
+
+pub fn connect_on_population_passive<G, A, S, PG, PA>(p1: &AcMx<PG>, n1: usize, p2: &AcMx<PA>, n2: usize)
+where G: 'static + Generator<S>,
+      A: 'static + PassiveAcceptor<S> ,
+      S: Send,
+      PG: HoldDevices<G>,
+      PA: HoldDevices<A>,
+{
+    let device1 = p1.lock().unwrap().device_by_id(n1).clone();
+    let device2 = p2.lock().unwrap().device_by_id(n2).clone();
+    connect_passive(device1, device2);
 }
 
 // pub fn connect_active<S> (pre: AcMx<dyn Generator<S>>, post: AcMx<dyn ActiveAcceptor<S>>)
@@ -66,7 +79,7 @@ where G: 'static + Generator<S>,
 //     post.lock().unwrap().add(Arc::downgrade(&pre), linker);
 // }
 
-pub fn connect_active<G, A, S> (pre: AcMx<G>, post: AcMx<A>)
+pub fn connect_active<G, A, S>(pre: AcMx<G>, post: AcMx<A>)
 where G: 'static + Generator<S>,
       A: 'static + ActiveAcceptor<S> ,
       S: Send,
@@ -74,4 +87,16 @@ where G: 'static + Generator<S>,
     let linker = Linker::new();
     pre.lock().unwrap().add_active(Arc::<Mutex<A>>::downgrade(&post), Arc::clone(&linker));
     post.lock().unwrap().add(Arc::<Mutex<G>>::downgrade(&pre), linker);
+}
+
+pub fn connect_on_population_active<G, A, S, PG, PA>(p1: &AcMx<PG>, n1: usize, p2: &AcMx<PA>, n2: usize)
+where G: 'static + Generator<S>,
+      A: 'static + ActiveAcceptor<S> ,
+      S: Send,
+      PG: HoldDevices<G>,
+      PA: HoldDevices<A>,
+{
+    let device1 = p1.lock().unwrap().device_by_id(n1).clone();
+    let device2 = p2.lock().unwrap().device_by_id(n2).clone();
+    connect_active(device1, device2);
 }
