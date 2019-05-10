@@ -44,8 +44,8 @@ fn main() {
     );
 
     pp_neuron_d.lock().unwrap().add(NeuronD::new(0, 100, Some(2)));
-    // pp_neuron_d.lock().unwrap().add(NeuronD::new(10, 100, Some(2)));
-    // pp_neuron_d.lock().unwrap().add(NeuronD::new(100, 100, None));
+    pp_neuron_d.lock().unwrap().add(NeuronD::new(10, 100, Some(2)));
+    pp_neuron_d.lock().unwrap().add(NeuronD::new(100, 100, None));
 
     /// NeuronD -> S1Pre -> NeuronD; active -> active
     // connectivity::connect_on_population_active(&pp_neuron_d, 0, &pp_neuron_d, 2);
@@ -62,17 +62,19 @@ fn main() {
     pp_conn_s1_pre_pre.lock().unwrap().add(ConnectionS1PrePre::new(0));
     pp_conn_s1_pre_pre.lock().unwrap().add(ConnectionS1PrePre::new(-50));
     pp_conn_s1_pre_pre.lock().unwrap().add(ConnectionS1PrePre::new(-100));
+    pp_conn_s1_pre_pre.lock().unwrap().add(ConnectionS1PrePre::new(-500));
     
-    /// active -> passive -> passive
+    /// active -> passive -> passive; neuron_d1 -> conn_pre_pre * 3
     connectivity::connect_on_population_passive(&pp_neuron_d, 0, &pp_conn_s1_pre_pre, 0);
     connectivity::connect_on_population_passive(&pp_conn_s1_pre_pre, 0, &pp_conn_s1_pre_pre, 1);
     connectivity::connect_on_population_passive(&pp_conn_s1_pre_pre, 1, &pp_conn_s1_pre_pre, 2);
     
-    /// active -> passive -> passive -> active
-
+    /// active -> passive -> passive -> active; neuron_d1 -> conn_pre_pre * 3 -> neuron_d1
+    connectivity::connect_on_population_active(&pp_conn_s1_pre_pre, 2, &pp_neuron_d, 0);
    
-
-
+    /// active -> passive -> passive -> active; neuron_d1 -> conn_pre_pre * 2 -> neuron_d1
+    connectivity::connect_on_population_passive(&pp_neuron_d, 1, &pp_conn_s1_pre_pre, 3);
+    connectivity::connect_on_population_active(&pp_conn_s1_pre_pre, 3, &pp_neuron_d, 1);
     
     println!("start run.");
     sp0.run(RunMode::Feedforward, 10);
@@ -90,4 +92,19 @@ fn main() {
     //     .device_by_id(2)
     //     .lock().unwrap()
     //     .show();
+
+    /// NeuronD -> S1PrePre -> S1PrePre -> S1PrePre -> NeuronD; active -> active
+    // series of {x, 10(x+1)}
+    println!("NeuronD -> S1PrePre -> S1PrePre -> S1PrePre -> NeuronD; active -> active");
+    pp_neuron_d.lock().unwrap()
+        .device_by_id(0)
+        .lock().unwrap()
+        .show();
+
+    /// active -> passive -> passive -> active; neuron_d1 -> conn_pre_pre * 2 -> neuron_d1
+    println!("active -> passive -> passive -> active; neuron_d1 -> conn_pre_pre * 2 -> neuron_d1");
+    pp_neuron_d.lock().unwrap()
+        .device_by_id(1)
+        .lock().unwrap()
+        .show();    
 }
