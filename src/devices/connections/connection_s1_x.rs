@@ -77,12 +77,22 @@ impl ConnectionS1X {
         }))
     }
 
-    pub fn new_with_passive(value: i32, pre: Arc<Mutex<dyn Generator<FwdPreS1>>>, post: Arc<Mutex<dyn PassiveAcceptor<FwdPostS1>>>) -> Arc<Mutex<ConnectionS1X>> {
+    pub fn new_with_passive(value: i32, pre: Arc<Mutex<G>>, post: Arc<Mutex<A>>) -> Arc<Mutex<ConnectionS1X>>
+    where G: Generator<FwdPreS1>,
+          A: PassiveAcceptor<FwdPostS1>,
+    {
         let conn = ConnectionS1X::new(value);
         connectivity::connect_passive(pre, Arc::clone(&conn));
         connectivity::connect_passive(Arc::clone(&conn), post);
         conn
     }
+
+    // pub fn new_with_passive(value: i32, pre: Arc<Mutex<dyn Generator<FwdPreS1>>>, post: Arc<Mutex<dyn PassiveAcceptor<FwdPostS1>>>) -> Arc<Mutex<ConnectionS1X>> {
+    //     let conn = ConnectionS1X::new(value);
+    //     connectivity::connect_passive(pre, Arc::clone(&conn));
+    //     connectivity::connect_passive(Arc::clone(&conn), post);
+    //     conn
+    // }
 
     // pub fn new_with_active(value: i32, pre: Arc<Mutex<dyn Generator<FwdPreS1>>>, post: Arc<Mutex<dyn ActiveAcceptor<FwdPostS1>>>) -> Arc<Mutex<ConnectionS1X>> {
     //     let conn = ConnectionS1X::new(value);
