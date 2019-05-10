@@ -1,6 +1,9 @@
+/// multi-in S1Post, multi-out S1Pre
+
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
-use std::sync::{Mutex, Arc, Weak};
+use std::sync::{Mutex, Arc};
+use crate::{WcMx, AcMx};
 use crate::connectivity::s1_pre::{MultiOutComponentS1Pre, FwdPreS1};
 use crate::connectivity::s1_post::{MultiInComponentS1Post, FwdPostS1};
 use crate::connectivity::{Generator, Acceptor, ActiveAcceptor, PassiveAcceptor};
@@ -24,19 +27,19 @@ struct FwdEndProduct {
 }
 
 impl Generator<FwdPreS1> for NeuronC {
-    fn add_active(&mut self, post: Weak<Mutex<dyn ActiveAcceptor<FwdPreS1>>>, linker: Arc<Mutex<Linker<FwdPreS1>>>)
+    fn add_active(&mut self, post: WcMx<dyn ActiveAcceptor<FwdPreS1>>, linker: AcMx<Linker<FwdPreS1>>)
     {
         self.out_s1_pre.add_active_target(post, linker);
     }
 
-    fn add_passive(&mut self, post: Weak<Mutex<dyn PassiveAcceptor<FwdPreS1>>>, linker: Arc<Mutex<Linker<FwdPreS1>>>)
+    fn add_passive(&mut self, post: WcMx<dyn PassiveAcceptor<FwdPreS1>>, linker: AcMx<Linker<FwdPreS1>>)
     {
         self.out_s1_pre.add_passive_target(post, linker);
     }
 }
 
 impl Acceptor<FwdPostS1> for NeuronC {
-    fn add(&mut self, pre: Weak<Mutex<dyn Generator<FwdPostS1>>>, linker: Arc<Mutex<Linker<FwdPostS1>>>)
+    fn add(&mut self, pre: WcMx<dyn Generator<FwdPostS1>>, linker: AcMx<Linker<FwdPostS1>>)
     {
         self.in_s1_post.add_target(pre, linker);
     }
@@ -74,9 +77,9 @@ impl FiringActiveDevice for NeuronC {
     }
     
     fn evolve(&mut self) -> Fired {
-        self.accept();
         self.proc_value += 1;
         self.gen_value += 1;
+        self.accept();
         match self.event_cond {
             None => {
                 // println!("agnet a go on. gen: {}, proc: {}.",  self.gen_value, self.proc_value);
@@ -104,7 +107,7 @@ impl FiringActiveDevice for NeuronC {
 }
 
 impl NeuronC {
-    pub fn new(gen_value: i32, proc_value: i32, event_cond: Option<i32>) -> Arc<Mutex<NeuronC>> {
+    pub fn new(gen_value: i32, proc_value: i32, event_cond: Option<i32>) -> AcMx<NeuronC> {
         Arc::new(Mutex::new(
             NeuronC {
                 out_s1_pre: MultiOutComponentS1Pre::new(),
