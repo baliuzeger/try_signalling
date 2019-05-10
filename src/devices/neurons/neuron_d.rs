@@ -1,19 +1,18 @@
-/// multi-in S1Post, multi-out S1Pre
+/// multi-in/out S1Pre.
 
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc};
 use crate::{WcMx, AcMx};
-use crate::connectivity::s1_pre::{MultiOutComponentS1Pre, FwdPreS1};
-use crate::connectivity::s1_post::{MultiInComponentS1Post, FwdPostS1};
+use crate::connectivity::s1_pre::{MultiOutComponentS1Pre, MultiInComponentS1Pre, FwdPreS1};
 use crate::connectivity::{Generator, Acceptor, ActiveAcceptor, PassiveAcceptor};
 use crate::operation::{ActiveDevice, Configurable, Runnable, Broadcast, Fired, RunMode, RunningSet};
 use crate::operation::op_device::FiringActiveDevice;
 use crate::components::Linker;
 
-pub struct NeuronC {
+pub struct NeuronD {
     out_s1_pre: MultiOutComponentS1Pre,
-    in_s1_post: MultiInComponentS1Post,
+    in_s1_pre: MultiInComponentS1Pre,
     gen_value: i32,
     proc_value: i32,
     event_cond: Option<i32>,
@@ -21,12 +20,11 @@ pub struct NeuronC {
 }
 
 struct FwdEndProduct {
-    pub msg_gen: i32,
-    pub msg_prop: i32,
-    pub msg_proc: i32,
+    pub msg: i32,
+    pub proc: i32,
 }
 
-impl Generator<FwdPreS1> for NeuronC {
+impl Generator<FwdPreS1> for NeuronD {
     fn add_active(&mut self, post: WcMx<dyn ActiveAcceptor<FwdPreS1>>, linker: AcMx<Linker<FwdPreS1>>)
     {
         self.out_s1_pre.add_active_target(post, linker);
@@ -38,32 +36,32 @@ impl Generator<FwdPreS1> for NeuronC {
     }
 }
 
-impl Acceptor<FwdPostS1> for NeuronC {
-    fn add(&mut self, pre: WcMx<dyn Generator<FwdPostS1>>, linker: AcMx<Linker<FwdPostS1>>)
+impl Acceptor<FwdPreS1> for NeuronD {
+    fn add(&mut self, pre: WcMx<dyn Generator<FwdPreS1>>, linker: AcMx<Linker<FwdPreS1>>)
     {
-        self.in_s1_post.add_target(pre, linker);
+        self.in_s1_pre.add_target(pre, linker);
     }
 }
 
-impl Configurable for NeuronC {
+impl Configurable for NeuronD {
     fn config_mode(&mut self, mode: RunMode) {
-        self.in_s1_post.config_mode(mode);
+        self.in_s1_pre.config_mode(mode);
         self.out_s1_pre.config_mode(mode);
     }
     
     fn config_channels(&mut self) {
-        self.in_s1_post.config_channels();
+        self.in_s1_pre.config_channels();
         self.out_s1_pre.config_channels();   
     }
 
     fn mode(&self) -> RunMode {
-        RunMode::eq_mode(self.in_s1_post.mode(),self.out_s1_pre.mode())
+        RunMode::eq_mode(self.in_s1_pre.mode(),self.out_s1_pre.mode())
     }
 }
 
-impl ActiveDevice for NeuronC {}
+impl ActiveDevice for NeuronD {}
 
-impl Runnable for NeuronC {
+impl Runnable for NeuronD {
     type Confirm = Broadcast;
     type Report = Fired;
     fn run(&mut self, rx_confirm: CCReceiver<<Self as Runnable>::Confirm>, tx_report: CCSender<<Self as Runnable>::Report>) {
@@ -71,7 +69,7 @@ impl Runnable for NeuronC {
     }
 }
 
-impl FiringActiveDevice for NeuronC {
+impl FiringActiveDevice for NeuronD {
     fn end(&mut self) {
         self.accept();
     }
@@ -106,12 +104,12 @@ impl FiringActiveDevice for NeuronC {
     }
 }
 
-impl NeuronC {
-    pub fn new(gen_value: i32, proc_value: i32, event_cond: Option<i32>) -> AcMx<NeuronC> {
+impl NeuronD {
+    pub fn new(gen_value: i32, proc_value: i32, event_cond: Option<i32>) -> AcMx<NeuronD> {
         Arc::new(Mutex::new(
-            NeuronC {
+            NeuronD {
                 out_s1_pre: MultiOutComponentS1Pre::new(),
-                in_s1_post: MultiInComponentS1Post::new(),
+                in_s1_pre: MultiInComponentS1Pre::new(),
                 gen_value,
                 proc_value,
                 event_cond,
@@ -127,20 +125,18 @@ impl NeuronC {
     }
 
     fn accept(&mut self) {
-        let mut acc = self.in_s1_post.ffw_accepted().iter().map(|s| FwdEndProduct {
-                msg_gen: s.msg_gen,
-                msg_prop: s.msg_prop,
-                msg_proc: self.proc_value,
+        let mut acc = self.in_s1_pre.ffw_accepted().iter().map(|s| FwdEndProduct {
+            msg: s.msg_gen,
+            proc: self.proc_value,
             }  
         ).collect::<Vec<FwdEndProduct>>();
 
         // for demo accepting
         for msg in &acc {
             println!(
-                "agent c accept: gen: {}, prop: {}, proc: {}.",
-                msg.msg_gen,
-                msg.msg_prop,
-                msg.msg_proc
+                "agent c accept: gen: {}, proc: {}.",
+                msg.msg,
+                msg.proc
             )
         }
         
@@ -154,10 +150,9 @@ impl NeuronC {
     pub fn show(&self) {
         for msg in &self.stock {
             println!(
-                "agent c buffer: gen: {}, prop: {}, proc: {}.",
-                msg.msg_gen,
-                msg.msg_prop,
-                msg.msg_proc
+                "agent c buffer: gen: {}, proc: {}.",
+                msg.msg,
+                msg.proc
             )
         }
     }

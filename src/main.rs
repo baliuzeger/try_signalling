@@ -30,47 +30,25 @@ fn main() {
         Arc::downgrade(&pp_conn_s1_x)
     );
 
-    // pp_agnt_c[2] get 2 S1 from pp_agnt_c[0 & 1].
+    // pp_agnt_c[0 & 1] -> S1Pre -> ConnS1X -> S1Post -> pp_agnt_c[2]
     pp_conn_s1_x.lock().unwrap().add(ConnectionS1X::new_with_active_population(10, &pp_neuron_c, 0, &pp_neuron_c, 2));
     pp_conn_s1_x.lock().unwrap().add(ConnectionS1X::new_with_active_population(11, &pp_neuron_c, 1, &pp_neuron_c, 2));
 
+    // active -> active
+
+    // active -> passive -> passive
+
+    // active -> passive -> passive -> active
+
+
+    
     println!("start run.");
     sp0.run(RunMode::Feedforward, 10);
 
-    // make ConnectionS1X c -> c
+    // pp_agnt_c[0 & 1] -> S1Pre -> ConnS1X -> S1Post -> pp_agnt_c[2]
     // series of {_, 10, _} , {_, 11, _}
     pp_neuron_c.lock().unwrap()
         .device_by_id(2)
         .lock().unwrap()
         .show();
-
-    // // make Connection1x a -> a
-    // // series of {_, -10, _} , {_, -11, _}
-    // pp_neuron_c.lock().unwrap()
-    //     .device_by_id(2)
-    //     .lock().unwrap()
-    //     .show();
-
-    // // make Connection1x c -> a
-    // // series of {_, 110, _}
-    // pp_neuron_c.lock().unwrap()
-    //     .device_by_id(1)
-    //     .lock().unwrap()
-    //     .show();
-
-    // // make Connection1x a -> c
-    // // series of {_, -110, _}
-    // pp_neuron_c.lock().unwrap()
-    //     .device_by_id(1)
-    //     .lock().unwrap()
-    //     .show();
-
-    // // make Connection2 a -> a
-    // // series of {_, 20, _}
-    // pp_neuron_c.lock().unwrap()
-    //     .device_by_id(0)
-    //     .lock().unwrap()
-    //     .show();
-
-    
 }
