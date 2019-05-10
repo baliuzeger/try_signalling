@@ -1,10 +1,11 @@
 use std::sync::{Arc};
 use try_signalling::supervisor::Supervisor;
 use try_signalling::populations::{SimpleFiringPopulation, SimplePassivePopulation};
-use try_signalling::devices::neurons::NeuronC;
+use try_signalling::devices::neurons::{NeuronC, NeuronD};
 use try_signalling::devices::connections::ConnectionS1X;
 use try_signalling::operation::RunMode;
 use try_signalling::populations::HoldDevices;
+use try_signalling::connectivity;
 
 fn main() {
 
@@ -35,7 +36,19 @@ fn main() {
     pp_conn_s1_x.lock().unwrap().add(ConnectionS1X::new_with_active_population(11, &pp_neuron_c, 1, &pp_neuron_c, 2));
 
     // active -> active
+    let name_pp_neuron_d = String::from("NeuronD Population");
+    let pp_neuron_d = SimpleFiringPopulation::<NeuronD>::new();
+    sp0.add_firing(
+        name_pp_neuron_d.clone(),
+        Arc::downgrade(&pp_neuron_d) // should try to avoid Arc::clone.
+    );
 
+    pp_neuron_d.lock().unwrap().add(NeuronD::new(0, 0, Some(2)));
+    pp_neuron_d.lock().unwrap().add(NeuronD::new(10, 0, Some(2)));
+    pp_neuron_d.lock().unwrap().add(NeuronD::new(100, 0, None));
+
+//    connectivity::connect_active(n1, n2)
+    
     // active -> passive -> passive
 
     // active -> passive -> passive -> active

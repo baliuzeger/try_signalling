@@ -1,24 +1,25 @@
-use std::sync::{Mutex, Weak, Arc};
+use std::sync::{Arc, Mutex};
 use crate::operation::{PassiveDevice, ActiveDevice};
 use crate::components::Linker;
+use crate::{AcMx, WcMx};
 
 pub mod s1_pre;
 pub mod s1_post;
 // pub mod signal_2;
 
 pub trait Generator<S: Send>: Send {
-    fn add_active(&mut self, post: Weak<Mutex<dyn ActiveAcceptor<S>>>, linker: Arc<Mutex<Linker<S>>>);
-    fn add_passive(&mut self, post: Weak<Mutex<dyn PassiveAcceptor<S>>>, linker: Arc<Mutex<Linker<S>>>);
+    fn add_active(&mut self, post: WcMx<dyn ActiveAcceptor<S>>, linker: AcMx<Linker<S>>);
+    fn add_passive(&mut self, post: WcMx<dyn PassiveAcceptor<S>>, linker: AcMx<Linker<S>>);
 }
 
 ///required by Components
 pub trait Acceptor<S: Send>: Send {
-    fn add(&mut self, pre: Weak<Mutex<dyn Generator<S>>>, linker: Arc<Mutex<Linker<S>>>);
+    fn add(&mut self, pre: WcMx<dyn Generator<S>>, linker: AcMx<Linker<S>>);
 }
 
 // /// impl on Devices
 // pub trait CanAccept<S: Send>: Send {
-//     fn add<G: CanGenerate<S>>(&mut self, pre: Weak<Mutex<G>>, linker: Arc<Mutex<Linker<S>>>);
+//     fn add<G: CanGenerate<S>>(&mut self, pre: WcMx<G>>, linker: AcMx<Linker<S>>>);
 // }
 
 ///required by Components
@@ -39,28 +40,38 @@ where S: Send,
 {}
 
 
-pub fn connect_passive<S> (pre: Arc<Mutex<dyn Generator<S>>>, post: Arc<Mutex<dyn PassiveAcceptor<S>>>)
-where S: Send,
-{
-    let linker = Linker::new();
-    pre.lock().unwrap().add_passive(Arc::downgrade(&post), Arc::clone(&linker));
-    post.lock().unwrap().add(Arc::downgrade(&pre), linker);
-}
-
-// pub fn connect_passive<G, A, S> (pre: Arc<Mutex<G>>, post: Arc<Mutex<A>>)
-// where G: Generator<S> + ?Sized,
-//       A: PassiveAcceptor<S> + ?Sized,
-//       S: Send,
+// pub fn connect_passive<S> (pre: AcMx<dyn Generator<S>>, post: AcMx<dyn PassiveAcceptor<S>>)
+// where S: Send,
 // {
 //     let linker = Linker::new();
 //     pre.lock().unwrap().add_passive(Arc::downgrade(&post), Arc::clone(&linker));
 //     post.lock().unwrap().add(Arc::downgrade(&pre), linker);
 // }
 
-pub fn connect_active<S> (pre: Arc<Mutex<dyn Generator<S>>>, post: Arc<Mutex<dyn ActiveAcceptor<S>>>)
-where S: Send,
+pub fn connect_passive<G, A, S> (pre: AcMx<G>, post: AcMx<A>)
+where G: 'static + Generator<S>,
+      A: 'static + PassiveAcceptor<S> ,
+      S: Send,
 {
     let linker = Linker::new();
-    pre.lock().unwrap().add_active(Arc::downgrade(&post), Arc::clone(&linker));
-    post.lock().unwrap().add(Arc::downgrade(&pre), linker);
+    pre.lock().unwrap().add_passive(Arc::<Mutex<A>>::downgrade(&post), Arc::clone(&linker));
+    post.lock().unwrap().add(Arc::<Mutex<G>>::downgrade(&pre), linker);
+}
+
+// pub fn connect_active<S> (pre: AcMx<dyn Generator<S>>, post: AcMx<dyn ActiveAcceptor<S>>)
+// where S: Send,
+// {
+//     let linker = Linker::new();
+//     pre.lock().unwrap().add_active(Arc::downgrade(&post), Arc::clone(&linker));
+//     post.lock().unwrap().add(Arc::downgrade(&pre), linker);
+// }
+
+pub fn connect_active<G, A, S> (pre: AcMx<G>, post: AcMx<A>)
+where G: 'static + Generator<S>,
+      A: 'static + ActiveAcceptor<S> ,
+      S: Send,
+{
+    let linker = Linker::new();
+    pre.lock().unwrap().add_active(Arc::<Mutex<A>>::downgrade(&post), Arc::clone(&linker));
+    post.lock().unwrap().add(Arc::<Mutex<G>>::downgrade(&pre), linker);
 }
