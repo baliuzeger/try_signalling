@@ -77,29 +77,31 @@ impl ConnectionS1X {
         }))
     }
 
-    pub fn new_with_passive<G, A>(value: i32, pre: Arc<Mutex<G>>, post: Arc<Mutex<A>>) -> Arc<Mutex<ConnectionS1X>>
-    where G: Generator<FwdPreS1>,
-          A: PassiveAcceptor<FwdPostS1>,
-    {
+    // pub fn new_with_passive<G, A>(value: i32, pre: Arc<Mutex<G>>, post: Arc<Mutex<A>>) -> Arc<Mutex<ConnectionS1X>>
+    // where G: Generator<FwdPreS1>,
+    //       A: PassiveAcceptor<FwdPostS1>,
+    // {
+    //     let conn = ConnectionS1X::new(value);
+    //     let tmp = Arc::clone(&conn);
+    //     connectivity::connect_passive(pre, tmp);
+    //     let tmp = Arc::clone(&conn);
+    //     connectivity::connect_passive(tmp, post);
+    //     conn
+    // }
+
+    pub fn new_with_passive(value: i32, pre: Arc<Mutex<dyn Generator<FwdPreS1>>>, post: Arc<Mutex<dyn PassiveAcceptor<FwdPostS1>>>) -> Arc<Mutex<ConnectionS1X>> {
         let conn = ConnectionS1X::new(value);
-        connectivity::connect_passive(pre, Arc::clone(&conn));
-        connectivity::connect_passive(Arc::clone(&conn), post);
+        connectivity::connect_passive(pre, conn.clone());
+        connectivity::connect_passive(conn.clone(), post);
         conn
     }
 
-    // pub fn new_with_passive(value: i32, pre: Arc<Mutex<dyn Generator<FwdPreS1>>>, post: Arc<Mutex<dyn PassiveAcceptor<FwdPostS1>>>) -> Arc<Mutex<ConnectionS1X>> {
-    //     let conn = ConnectionS1X::new(value);
-    //     connectivity::connect_passive(pre, Arc::clone(&conn));
-    //     connectivity::connect_passive(Arc::clone(&conn), post);
-    //     conn
-    // }
-
-    // pub fn new_with_active(value: i32, pre: Arc<Mutex<dyn Generator<FwdPreS1>>>, post: Arc<Mutex<dyn ActiveAcceptor<FwdPostS1>>>) -> Arc<Mutex<ConnectionS1X>> {
-    //     let conn = ConnectionS1X::new(value);
-    //     connectivity::connect_passive(pre, conn);
-    //     connectivity::connect_active(conn, post);
-    //     conn
-    // }
+    pub fn new_with_active(value: i32, pre: Arc<Mutex<dyn Generator<FwdPreS1>>>, post: Arc<Mutex<dyn ActiveAcceptor<FwdPostS1>>>) -> Arc<Mutex<ConnectionS1X>> {
+        let conn = ConnectionS1X::new(value);
+        connectivity::connect_passive(pre, conn.clone());
+        connectivity::connect_active(conn.clone(), post);
+        conn
+    }
     
     fn refine(&self, s: FwdPreS1) -> FwdPostS1 {
         FwdPostS1 {
