@@ -7,10 +7,10 @@ use crate::operation::{RunningSet, Broadcast, Fired, PassiveDevice, ActiveDevice
 use crate::random_sleep;
 
 pub trait ConsecutivePassiveDevice: PassiveDevice {
-    fn respond(&self);
+    fn respond(&mut self);
     fn running_passive_devices(&self) -> Vec<RunningSet<Broadcast, ()>>;
 
-    fn run(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<()>){
+    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<()>){
         let running_devices = self.running_passive_devices();
         loop {
             random_sleep();
@@ -45,10 +45,10 @@ pub trait ConsecutivePassiveDevice: PassiveDevice {
 }
 
 pub trait FiringPassiveDevice: PassiveDevice {
-    fn respond(&self) -> Fired;
+    fn respond(&mut self) -> Fired;
     fn running_passive_devices(&self) -> Vec<RunningSet<Broadcast, ()>>;
 
-    fn run(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<()>){
+    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<()>){
         let running_devices = self.running_passive_devices();
         loop {
             random_sleep();
@@ -87,9 +87,9 @@ pub trait FiringPassiveDevice: PassiveDevice {
 }
 
 pub trait SilentPassiveDevice: PassiveDevice {
-    fn respond(&self);
+    fn respond(&mut self);
 
-    fn run(&self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<()>){
+    fn run(&mut self, rx_confirm: CCReceiver<Broadcast>, tx_report: CCSender<()>){
         loop {
             random_sleep();
             match rx_confirm.recv().unwrap() {

@@ -1,3 +1,4 @@
+/// single_in S1Pre, single_out S1Post.
 use crossbeam_channel::Receiver as CCReceiver;
 use crossbeam_channel::Sender as CCSender;
 use std::sync::{Mutex, Arc};
@@ -45,7 +46,7 @@ impl Runnable for ConnectionS1X {
 }
 
 impl ConsecutivePassiveDevice for ConnectionS1X {
-    fn respond(&self) {
+    fn respond(&mut self) {
         self.in_s1_pre.ffw_accepted().into_iter().for_each(|s| self.out_s1_post.feedforward(self.refine(s)));
     }
     
